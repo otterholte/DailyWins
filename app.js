@@ -1301,8 +1301,8 @@ function renderTasks() {
                 ${count > 0 ? `<div class="count">${count} today</div>` : ""}
               </div>
               <div class="actions">
-                <button>+</button>
-                <button>−</button>
+                <button class="action-minus">−</button>
+                <button class="action-plus">+</button>
               </div>
             </div>
             <div class="task-progress">
@@ -1320,13 +1320,14 @@ function renderTasks() {
               ${count > 0 ? `<div class="count">${count} today</div>` : ""}
             </div>
             <div class="actions">
-              <button>+</button>
-              <button>−</button>
+              <button class="action-minus">−</button>
+              <button class="action-plus">+</button>
             </div>
           `;
         }
 
-        const [addBtn, removeBtn] = row.querySelectorAll("button");
+        const removeBtn = row.querySelector(".action-minus");
+        const addBtn = row.querySelector(".action-plus");
         addBtn.addEventListener("click", () => addWin(task));
         removeBtn.addEventListener("click", () => removeWinForTask(task.id));
 
