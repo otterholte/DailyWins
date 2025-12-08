@@ -719,8 +719,8 @@ function initDragDrop(row) {
 }
 
 function startDrag(e) {
-  // Only start drag from the handle or the row itself (not buttons)
-  if (e.target.closest("button")) return;
+  // Only start drag from the drag handle icon
+  if (!e.target.closest(".drag-handle")) return;
   
   e.preventDefault();
   
