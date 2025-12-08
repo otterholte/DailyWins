@@ -1,5 +1,10 @@
 const STORAGE_KEY = "daily-wins-v3";
 
+// Supabase Configuration
+const SUPABASE_URL = 'https://viwyvwopdrxfzvkxboyn.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpd3l2d29wZHJ4Znp2a3hib3luIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxNzIzOTEsImV4cCI6MjA4MDc0ODM5MX0.uksKQ_bbcMhqN1BhaTp75xyo6Y4pNJi6RRsmu7osvyg';
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 const goals = { weekly: 8, monthly: 30, grandTotal: 100 };
 
 const defaultTasks = [
@@ -49,8 +54,6 @@ const categories = ["Daily", "Weekly", "Monthly", "Self Care"];
 
 let tasks = [...defaultTasks];
 
-// API_BASE is empty since frontend and backend are served from the same origin
-const API_BASE = '';
 
 const state = {
   currentMonth: startOfMonth(new Date()),
@@ -111,7 +114,7 @@ function bindControls() {
   });
 }
 
-function bindAccount() {
+async function bindAccount() {
   // Account button
   document.getElementById("account-btn").addEventListener("click", openAccount);
   document.querySelector("#account-modal .modal-backdrop").addEventListener("click", closeAccountModal);
@@ -131,11 +134,22 @@ function bindAccount() {
   document.getElementById("profile-image").addEventListener("change", uploadAvatar);
   document.getElementById("change-password-btn").addEventListener("click", changePassword);
   
-  // Check for saved session
-  const savedAccountId = localStorage.getItem("daily-wins-account-id");
-  if (savedAccountId) {
-    loadAccountFromServer(savedAccountId);
+  // Check for existing Supabase session
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session) {
+    await loadUserProfile(session.user);
   }
+  
+  // Listen for auth changes
+  supabase.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_IN' && session) {
+      await loadUserProfile(session.user);
+    } else if (event === 'SIGNED_OUT') {
+      state.account = null;
+      updateAccountButton();
+      render();
+    }
+  });
 }
 
 function openAccount() {
@@ -167,12 +181,12 @@ function showProfileView() {
   
   if (state.account) {
     document.getElementById("profile-display-name").textContent = state.account.name;
-    document.getElementById("profile-username").textContent = "@" + state.account.username;
+    document.getElementById("profile-username").textContent = state.account.email || state.account.username;
     document.getElementById("profile-name").value = state.account.name;
     
     const preview = document.getElementById("avatar-preview");
     if (state.account.avatar) {
-      preview.innerHTML = `<img src="${API_BASE}${state.account.avatar}" alt="Avatar">`;
+      preview.innerHTML = `<img src="${state.account.avatar}" alt="Avatar">`;
     } else {
       preview.innerHTML = "👤";
     }
@@ -231,43 +245,57 @@ function showProfileSuccess(message) {
 }
 
 async function submitAuth() {
-  const username = document.getElementById("auth-username").value.trim();
+  const email = document.getElementById("auth-username").value.trim();
   const password = document.getElementById("auth-password").value;
   const name = document.getElementById("auth-name").value.trim();
   
-  if (!username || !password) {
-    showAuthError("Please enter username and password");
+  if (!email || !password) {
+    showAuthError("Please enter email and password");
     return;
   }
   
   try {
-    const endpoint = isRegistering ? "/api/register" : "/api/login";
-    const body = isRegistering 
-      ? { username, password, name: name || username }
-      : { username, password };
-    
-    const res = await fetch(API_BASE + endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    
-    const data = await res.json();
-    
-    if (!res.ok) {
-      showAuthError(data.error || "Something went wrong");
-      return;
-    }
-    
-    // Success - save account
-    state.account = data.account;
-    localStorage.setItem("daily-wins-account-id", data.account.id);
-    
-    // Load account data
-    state.completions = data.account.completions || {};
-    if (data.account.tasks) {
-      tasks = data.account.tasks;
-      state.customTasks = data.account.tasks;
+    if (isRegistering) {
+      // Sign up with Supabase
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { name: name || email.split('@')[0] }
+        }
+      });
+      
+      if (error) {
+        showAuthError(error.message);
+        return;
+      }
+      
+      if (data.user) {
+        // Update profile with name
+        await supabase.from('profiles').update({ 
+          name: name || email.split('@')[0],
+          username: email 
+        }).eq('id', data.user.id);
+        
+        await loadUserProfile(data.user);
+        showProfileView();
+      }
+    } else {
+      // Sign in with Supabase
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      
+      if (error) {
+        showAuthError(error.message);
+        return;
+      }
+      
+      if (data.user) {
+        await loadUserProfile(data.user);
+        showProfileView();
+      }
     }
     
     // Clear form
@@ -275,39 +303,51 @@ async function submitAuth() {
     document.getElementById("auth-password").value = "";
     document.getElementById("auth-name").value = "";
     
-    updateAccountButton();
-    showProfileView();
     render();
     
   } catch (err) {
-    showAuthError("Could not connect to server. Make sure the server is running.");
+    showAuthError("Something went wrong. Please try again.");
     console.error(err);
   }
 }
 
-async function loadAccountFromServer(accountId) {
+async function loadUserProfile(user) {
   try {
-    const res = await fetch(API_BASE + "/api/account/" + accountId);
-    if (!res.ok) {
-      localStorage.removeItem("daily-wins-account-id");
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+    
+    if (error) {
+      console.error("Failed to load profile:", error);
       return;
     }
     
-    const account = await res.json();
-    state.account = account;
-    state.completions = account.completions || {};
-    state.starMoments = account.starMoments || [];
+    state.account = {
+      id: user.id,
+      email: user.email,
+      username: profile.username || user.email,
+      name: profile.name || user.email.split('@')[0],
+      avatar: profile.avatar_url,
+      completions: profile.completions || {},
+      tasks: profile.tasks,
+      starMoments: profile.star_moments || []
+    };
     
-    if (account.tasks) {
-      tasks = account.tasks;
-      state.customTasks = account.tasks;
+    state.completions = profile.completions || {};
+    state.starMoments = profile.star_moments || [];
+    
+    if (profile.tasks) {
+      tasks = profile.tasks;
+      state.customTasks = profile.tasks;
     }
     
     updateAccountButton();
     render();
     
   } catch (err) {
-    console.error("Failed to load account:", err);
+    console.error("Failed to load profile:", err);
   }
 }
 
@@ -321,26 +361,23 @@ async function saveProfile() {
   }
   
   try {
-    const res = await fetch(API_BASE + "/api/account/" + state.account.id, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
-    });
+    const { error } = await supabase
+      .from('profiles')
+      .update({ name })
+      .eq('id', state.account.id);
     
-    const data = await res.json();
-    
-    if (!res.ok) {
-      showProfileError(data.error || "Failed to save");
+    if (error) {
+      showProfileError(error.message || "Failed to save");
       return;
     }
     
-    state.account = data.account;
+    state.account.name = name;
     showProfileSuccess("Saved!");
     showProfileView();
     updateAccountButton();
     
   } catch (err) {
-    showProfileError("Could not connect to server");
+    showProfileError("Something went wrong");
     console.error(err);
   }
 }
@@ -349,23 +386,34 @@ async function uploadAvatar(e) {
   if (!state.account || !e.target.files[0]) return;
   
   const file = e.target.files[0];
-  const formData = new FormData();
-  formData.append("avatar", file);
+  const fileExt = file.name.split('.').pop();
+  const fileName = `${state.account.id}-${Date.now()}.${fileExt}`;
   
   try {
-    const res = await fetch(API_BASE + "/api/account/" + state.account.id + "/avatar", {
-      method: "POST",
-      body: formData,
-    });
+    // Upload to Supabase Storage
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(fileName, file, { upsert: true });
     
-    const data = await res.json();
-    
-    if (!res.ok) {
-      showProfileError(data.error || "Failed to upload");
+    if (uploadError) {
+      // If storage bucket doesn't exist, just skip avatar for now
+      console.log("Avatar upload skipped - storage not configured");
+      showProfileError("Avatar upload not available yet");
       return;
     }
     
-    state.account.avatar = data.avatar;
+    // Get public URL
+    const { data: { publicUrl } } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(fileName);
+    
+    // Update profile
+    await supabase
+      .from('profiles')
+      .update({ avatar_url: publicUrl })
+      .eq('id', state.account.id);
+    
+    state.account.avatar = publicUrl;
     showProfileView();
     updateAccountButton();
     showProfileSuccess("Avatar updated!");
@@ -379,30 +427,25 @@ async function uploadAvatar(e) {
 async function changePassword() {
   if (!state.account) return;
   
-  const current = document.getElementById("current-password").value;
   const newPass = document.getElementById("new-password").value;
   
-  if (!current || !newPass) {
-    showProfileError("Please enter both passwords");
+  if (!newPass) {
+    showProfileError("Please enter new password");
     return;
   }
   
-  if (newPass.length < 4) {
-    showProfileError("New password must be at least 4 characters");
+  if (newPass.length < 6) {
+    showProfileError("Password must be at least 6 characters");
     return;
   }
   
   try {
-    const res = await fetch(API_BASE + "/api/account/" + state.account.id + "/password", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ currentPassword: current, newPassword: newPass }),
+    const { error } = await supabase.auth.updateUser({
+      password: newPass
     });
     
-    const data = await res.json();
-    
-    if (!res.ok) {
-      showProfileError(data.error || "Failed to change password");
+    if (error) {
+      showProfileError(error.message || "Failed to change password");
       return;
     }
     
@@ -411,14 +454,15 @@ async function changePassword() {
     showProfileSuccess("Password changed!");
     
   } catch (err) {
-    showProfileError("Could not connect to server");
+    showProfileError("Something went wrong");
     console.error(err);
   }
 }
 
-function logout() {
+async function logout() {
+  await supabase.auth.signOut();
+  
   state.account = null;
-  localStorage.removeItem("daily-wins-account-id");
   
   // Reset to local storage mode
   const saved = localStorage.getItem(STORAGE_KEY);
@@ -446,7 +490,7 @@ function logout() {
 function updateAccountButton() {
   const btn = document.getElementById("account-btn");
   if (state.account && state.account.avatar) {
-    btn.innerHTML = `<img src="${API_BASE}${state.account.avatar}" alt="" class="account-avatar">`;
+    btn.innerHTML = `<img src="${state.account.avatar}" alt="" class="account-avatar">`;
   } else if (state.account) {
     btn.textContent = state.account.name.charAt(0).toUpperCase();
   } else {
@@ -1526,15 +1570,14 @@ function syncToServer() {
   syncTimeout = setTimeout(async () => {
     if (!state.account) return;
     try {
-      await fetch(API_BASE + "/api/account/" + state.account.id, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      await supabase
+        .from('profiles')
+        .update({
           completions: state.completions,
           tasks: tasks,
-          starMoments: state.starMoments,
-        }),
-      });
+          star_moments: state.starMoments,
+        })
+        .eq('id', state.account.id);
     } catch (err) {
       console.error("Sync failed:", err);
     }
