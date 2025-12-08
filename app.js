@@ -49,7 +49,8 @@ const categories = ["Daily", "Weekly", "Monthly", "Self Care"];
 
 let tasks = [...defaultTasks];
 
-const API_BASE = window.location.port === '3000' ? '' : 'http://localhost:3000';
+// API_BASE is empty since frontend and backend are served from the same origin
+const API_BASE = '';
 
 const state = {
   currentMonth: startOfMonth(new Date()),
