@@ -302,11 +302,17 @@ async function submitAuth() {
   const email = document.getElementById("auth-username").value.trim();
   const password = document.getElementById("auth-password").value;
   const name = document.getElementById("auth-name").value.trim();
+  const submitBtn = document.getElementById("auth-submit");
   
   if (!email || !password) {
     showAuthError("Please enter email and password");
     return;
   }
+  
+  // Show loading state
+  const originalText = submitBtn.textContent;
+  submitBtn.textContent = "Loading...";
+  submitBtn.disabled = true;
   
   try {
     if (isRegistering) {
@@ -320,6 +326,8 @@ async function submitAuth() {
       
       if (error) {
         showAuthError(error.message);
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
         return;
       }
       
@@ -340,6 +348,8 @@ async function submitAuth() {
       
       if (error) {
         showAuthError(error.message);
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
         return;
       }
       
@@ -359,6 +369,9 @@ async function submitAuth() {
   } catch (err) {
     showAuthError("Something went wrong. Please try again.");
     console.error(err);
+  } finally {
+    submitBtn.textContent = originalText;
+    submitBtn.disabled = false;
   }
 }
 
