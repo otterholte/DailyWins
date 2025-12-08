@@ -9,38 +9,49 @@
   <body>
     <div class="app">
       <header class="top-bar">
-        <div class="logo">
+        <div class="header-left">
           <button id="menu-btn" class="menu-btn">☰</button>
+        </div>
+        <div class="header-center">
           <h1><span class="logo-icon">★</span> Daily Wins</h1>
         </div>
-        <div class="top-actions">
-          <div class="view-toggle">
-            <button data-view="day" class="active">Day</button>
-            <button data-view="week">Week</button>
-            <button data-view="month">Month</button>
-          </div>
-          <button id="today-btn" class="secondary">Today</button>
+        <div class="header-right">
           <button id="account-btn" class="icon-btn" title="Profile">👤</button>
         </div>
       </header>
-
-      <div class="nav-row">
-        <div></div>
-        <div class="nav-center">
-          <button id="prev-btn">‹</button>
-          <span class="period-label" id="period-label"></span>
-          <button id="next-btn">›</button>
-        </div>
-        <div></div>
+      <!-- Stats Section -->
+      <div class="stats-section">
+        <div class="stats-row" id="stats-row"></div>
+        <div class="progress-row" id="progress-row"></div>
       </div>
 
-      <div class="stats-row" id="stats-row"></div>
-      <div class="progress-row" id="progress-row"></div>
+      <!-- Calendar Section -->
+      <div class="calendar-section">
+        <div class="sub-header">
+          <div class="view-toggle">
+            <button data-view="day">Day</button>
+            <button data-view="week" class="active">Week</button>
+            <button data-view="month">Month</button>
+          </div>
+          <button id="today-btn" class="secondary">Today</button>
+        </div>
 
-      <main class="layout">
+        <div class="nav-row">
+          <div></div>
+          <div class="nav-center">
+            <button id="prev-btn">‹</button>
+            <span class="period-label" id="period-label"></span>
+            <button id="next-btn">›</button>
+          </div>
+          <div></div>
+        </div>
+
         <section class="calendar-card">
           <div class="calendar-grid" id="calendar-grid"></div>
         </section>
+      </div>
+
+      <main class="layout">
 
         <section class="task-card">
           <div class="task-card-header">
@@ -125,8 +136,14 @@
           <div class="color-picker" id="color-picker"></div>
         </div>
         <div class="form-group" id="goal-group">
-          <label>Goal (optional)</label>
-          <input type="number" id="edit-goal" min="1" placeholder="e.g. 3">
+          <label>Goal Number (for progress bar)</label>
+          <input type="number" id="edit-goal" min="1" placeholder="e.g. 3 for '3x per week'">
+          <small class="form-hint">Leave empty for tasks with no progress bar</small>
+        </div>
+        <div class="form-group" id="link-group">
+          <label>Link to Goals</label>
+          <p class="form-hint">When you complete this task, it will also count toward these goals:</p>
+          <div id="link-options" class="link-options"></div>
         </div>
         <div class="modal-actions">
           <button id="edit-cancel" class="secondary">Cancel</button>

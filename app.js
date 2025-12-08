@@ -55,7 +55,7 @@ const state = {
   currentMonth: startOfMonth(new Date()),
   selectedDate: new Date(),
   completions: {},
-  view: "day",
+  view: "week",
   customTasks: null,
   account: null, // logged in account
   starMoments: [], // star jar moments
@@ -511,7 +511,8 @@ function closeConfirmModal() {
 }
 
 function openEditModal(task, category) {
-  editingTask = task ? { ...task } : { id: null, label: "", color: colorPalette[0], category };
+  editingTask = task ? { ...task } : { id: null, label: "", color: colorPalette[0], category, linkedTo: [] };
+  if (!editingTask.linkedTo) editingTask.linkedTo = [];
   
   document.getElementById("edit-title").textContent = task ? "Edit Task" : "Add Task";
   document.getElementById("edit-label").value = editingTask.label;
@@ -521,6 +522,23 @@ function openEditModal(task, category) {
   const goalGroup = document.getElementById("goal-group");
   goalGroup.style.display = (category === "Weekly" || category === "Monthly") ? "block" : "none";
   document.getElementById("edit-goal").value = editingTask.goal || "";
+  
+  // Update placeholder text based on category
+  const goalInput = document.getElementById("edit-goal");
+  if (category === "Monthly") {
+    goalInput.placeholder = "e.g. 4 for '4 times per month'";
+  } else {
+    goalInput.placeholder = "e.g. 3 for '3x per week'";
+  }
+
+  // Show/hide link options for Daily and Self Care tasks
+  const linkGroup = document.getElementById("link-group");
+  const isLinkable = category === "Daily" || category === "Self Care";
+  linkGroup.style.display = isLinkable ? "block" : "none";
+  
+  if (isLinkable) {
+    renderLinkOptions();
+  }
 
   // Select color
   const picker = document.getElementById("color-picker");
@@ -529,6 +547,27 @@ function openEditModal(task, category) {
   });
 
   document.getElementById("edit-modal").classList.remove("hidden");
+}
+
+function renderLinkOptions() {
+  const container = document.getElementById("link-options");
+  const linkableTasks = tasks.filter(t => 
+    (t.category === "Weekly" || t.category === "Monthly") && t.goal
+  );
+  
+  if (linkableTasks.length === 0) {
+    container.innerHTML = '<p class="form-hint">No weekly/monthly goals with targets available to link.</p>';
+    return;
+  }
+  
+  container.innerHTML = linkableTasks.map(t => `
+    <label class="link-option">
+      <input type="checkbox" value="${t.id}" ${editingTask.linkedTo?.includes(t.id) ? "checked" : ""}>
+      <span class="link-dot" style="background: ${t.color}"></span>
+      <span class="link-label">${t.label}</span>
+      <span class="link-category">${t.category}</span>
+    </label>
+  `).join("");
 }
 
 function closeEditModal() {
@@ -557,26 +596,26 @@ function renderManageList() {
   items.forEach((task, idx) => {
     const row = document.createElement("div");
     row.className = "manage-row";
+    row.dataset.taskId = task.id;
+    row.dataset.index = idx;
     row.innerHTML = `
+      <span class="drag-handle">☰</span>
       <span class="dot" style="background:${task.color}"></span>
-      <div>
+      <div class="task-info">
         <div class="label">${task.label}</div>
         ${task.goal ? `<div class="meta">Goal: ${task.goal}</div>` : ""}
       </div>
       <div class="spacer"></div>
-      <button class="btn btn-move" data-move="up" ${idx === 0 ? "disabled" : ""}>↑</button>
-      <button class="btn btn-move" data-move="down" ${idx === items.length - 1 ? "disabled" : ""}>↓</button>
       <button class="btn btn-edit" data-edit="edit">✎</button>
       <button class="btn btn-delete" data-edit="delete">🗑</button>
     `;
 
+    // Initialize drag and drop
+    initDragDrop(row);
+
     row.querySelectorAll(".btn").forEach((btn) => {
       btn.addEventListener("click", () => {
-        if (btn.dataset.move) {
-          moveTask(task.id, btn.dataset.move === "up" ? -1 : 1);
-          renderManageList();
-          render();
-        } else if (btn.dataset.edit === "edit") {
+        if (btn.dataset.edit === "edit") {
           openEditModal(task, manageCategory);
         } else if (btn.dataset.edit === "delete") {
           showConfirm(
@@ -594,6 +633,225 @@ function renderManageList() {
 
     listEl.appendChild(row);
   });
+}
+
+// Drag and drop state
+let dragState = {
+  active: false,
+  element: null,
+  taskId: null,
+  clone: null,
+  placeholder: null,
+  startY: 0,
+  startIndex: 0,
+  currentIndex: 0,
+  items: [],
+  listEl: null,
+  itemHeight: 0,
+  scrollInterval: null,
+};
+
+function initDragDrop(row) {
+  // Mouse events
+  row.addEventListener("mousedown", startDrag);
+  
+  // Touch events
+  row.addEventListener("touchstart", startDrag, { passive: false });
+}
+
+function startDrag(e) {
+  // Only start drag from the handle or the row itself (not buttons)
+  if (e.target.closest("button")) return;
+  
+  e.preventDefault();
+  
+  const row = e.currentTarget;
+  const listEl = document.getElementById("manage-list");
+  const allRows = Array.from(listEl.querySelectorAll(".manage-row"));
+  const rect = row.getBoundingClientRect();
+  const listRect = listEl.getBoundingClientRect();
+  
+  // Get starting position
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  
+  // Store initial state
+  dragState.active = true;
+  dragState.element = row;
+  dragState.taskId = row.dataset.taskId;
+  dragState.startY = clientY;
+  dragState.startIndex = parseInt(row.dataset.index);
+  dragState.currentIndex = dragState.startIndex;
+  dragState.items = allRows;
+  dragState.listEl = listEl;
+  dragState.itemHeight = rect.height + 8; // Include gap
+  
+  // Create clone that follows cursor
+  dragState.clone = row.cloneNode(true);
+  dragState.clone.classList.add("drag-clone");
+  dragState.clone.style.cssText = `
+    position: fixed;
+    left: ${rect.left}px;
+    top: ${rect.top}px;
+    width: ${rect.width}px;
+    height: ${rect.height}px;
+    z-index: 10000;
+    pointer-events: none;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    opacity: 0.95;
+    transform: scale(1.02);
+    background: white;
+    border-radius: 10px;
+  `;
+  document.body.appendChild(dragState.clone);
+  
+  // Create placeholder
+  dragState.placeholder = document.createElement("div");
+  dragState.placeholder.className = "drag-placeholder";
+  dragState.placeholder.style.cssText = `
+    height: ${rect.height}px;
+    background: rgba(0, 122, 255, 0.1);
+    border: 2px dashed rgba(0, 122, 255, 0.3);
+    border-radius: 10px;
+    margin-bottom: 8px;
+  `;
+  
+  // Hide original and insert placeholder
+  row.style.opacity = "0";
+  row.style.height = "0";
+  row.style.padding = "0";
+  row.style.margin = "0";
+  row.style.overflow = "hidden";
+  listEl.insertBefore(dragState.placeholder, allRows[dragState.startIndex]);
+  
+  // Add move listeners
+  if (e.touches) {
+    document.addEventListener("touchmove", moveDrag, { passive: false });
+    document.addEventListener("touchend", endDrag);
+    document.addEventListener("touchcancel", endDrag);
+  } else {
+    document.addEventListener("mousemove", moveDrag);
+    document.addEventListener("mouseup", endDrag);
+  }
+}
+
+function moveDrag(e) {
+  if (!dragState.active) return;
+  e.preventDefault();
+  
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  const deltaY = clientY - dragState.startY;
+  
+  // Move the clone
+  const startRect = dragState.element.getBoundingClientRect();
+  const originalTop = startRect.top + startRect.height / 2;
+  dragState.clone.style.top = (clientY - dragState.itemHeight / 2) + "px";
+  
+  // Calculate new index based on position
+  const listRect = dragState.listEl.getBoundingClientRect();
+  const relativeY = clientY - listRect.top + dragState.listEl.scrollTop;
+  let newIndex = Math.floor(relativeY / dragState.itemHeight);
+  newIndex = Math.max(0, Math.min(newIndex, dragState.items.length - 1));
+  
+  // Move placeholder if index changed
+  if (newIndex !== dragState.currentIndex) {
+    dragState.currentIndex = newIndex;
+    
+    // Remove placeholder
+    dragState.placeholder.remove();
+    
+    // Find the target position
+    const visibleItems = Array.from(dragState.listEl.querySelectorAll(".manage-row:not([style*='height: 0'])"));
+    
+    if (newIndex >= visibleItems.length) {
+      dragState.listEl.appendChild(dragState.placeholder);
+    } else {
+      const targetRow = visibleItems[newIndex];
+      if (targetRow) {
+        dragState.listEl.insertBefore(dragState.placeholder, targetRow);
+      }
+    }
+  }
+  
+  // Auto-scroll if near edges
+  const modalContent = dragState.listEl.closest(".modal-content");
+  if (modalContent) {
+    const modalRect = modalContent.getBoundingClientRect();
+    const scrollThreshold = 50;
+    
+    if (clientY < modalRect.top + scrollThreshold) {
+      modalContent.scrollTop -= 5;
+    } else if (clientY > modalRect.bottom - scrollThreshold) {
+      modalContent.scrollTop += 5;
+    }
+  }
+}
+
+function endDrag(e) {
+  if (!dragState.active) return;
+  
+  // Remove listeners
+  document.removeEventListener("mousemove", moveDrag);
+  document.removeEventListener("mouseup", endDrag);
+  document.removeEventListener("touchmove", moveDrag);
+  document.removeEventListener("touchend", endDrag);
+  document.removeEventListener("touchcancel", endDrag);
+  
+  // Calculate final position
+  const finalIndex = dragState.currentIndex;
+  const startIndex = dragState.startIndex;
+  
+  // Clean up
+  if (dragState.clone) {
+    dragState.clone.remove();
+  }
+  if (dragState.placeholder) {
+    dragState.placeholder.remove();
+  }
+  
+  // Restore original element
+  dragState.element.style.opacity = "";
+  dragState.element.style.height = "";
+  dragState.element.style.padding = "";
+  dragState.element.style.margin = "";
+  dragState.element.style.overflow = "";
+  
+  // Apply reorder if position changed
+  if (finalIndex !== startIndex) {
+    reorderTasksByIndex(dragState.taskId, startIndex, finalIndex);
+  }
+  
+  // Reset state
+  dragState.active = false;
+  dragState.element = null;
+  dragState.taskId = null;
+  dragState.clone = null;
+  dragState.placeholder = null;
+  
+  renderManageList();
+  render();
+}
+
+function reorderTasksByIndex(taskId, fromIdx, toIdx) {
+  // Get only tasks in current category
+  const categoryTasks = tasks.filter(t => t.category === manageCategory);
+  const otherTasks = tasks.filter(t => t.category !== manageCategory);
+  
+  // Reorder within category
+  const [movedTask] = categoryTasks.splice(fromIdx, 1);
+  categoryTasks.splice(toIdx, 0, movedTask);
+  
+  // Rebuild tasks array maintaining category order
+  tasks = [];
+  categories.forEach(cat => {
+    if (cat === manageCategory) {
+      tasks.push(...categoryTasks);
+    } else {
+      tasks.push(...otherTasks.filter(t => t.category === cat));
+    }
+  });
+  
+  saveTasks();
 }
 
 function moveTask(taskId, dir) {
@@ -618,12 +876,18 @@ function saveTask() {
   const color = selectedColor ? selectedColor.dataset.color : colorPalette[0];
   const goalInput = document.getElementById("edit-goal").value;
   const goal = goalInput ? parseInt(goalInput, 10) : undefined;
+  
+  // Get linked tasks (for Daily/Self Care tasks)
+  const linkedTo = [];
+  document.querySelectorAll("#link-options input[type='checkbox']:checked").forEach(cb => {
+    linkedTo.push(cb.value);
+  });
 
   if (editingTask.id) {
     // Update existing task
     const idx = tasks.findIndex((t) => t.id === editingTask.id);
     if (idx >= 0) {
-      tasks[idx] = { ...tasks[idx], label, color, goal };
+      tasks[idx] = { ...tasks[idx], label, color, goal, linkedTo };
     }
   } else {
     // Add new task
@@ -634,6 +898,7 @@ function saveTask() {
       category: editingTask.category,
     };
     if (goal) newTask.goal = goal;
+    if (linkedTo.length > 0) newTask.linkedTo = linkedTo;
     tasks.push(newTask);
   }
 
@@ -788,38 +1053,10 @@ function renderStats() {
 }
 
 function renderProgress() {
+  // Progress row is now empty - we removed the weekly/monthly goal cards
+  // Individual task progress bars are shown inline with each task
   const row = document.getElementById("progress-row");
   row.innerHTML = "";
-
-  const weekly = countRange("Weekly", weekRange(state.selectedDate));
-  const monthly = countRange("Monthly", monthRange(state.currentMonth));
-
-  row.innerHTML = `
-    <div class="progress-card weekly ${weekly >= goals.weekly ? "complete" : ""}">
-      <div class="progress-header">
-        <div class="progress-label">
-          <span class="progress-icon">📅</span>
-          <span class="progress-title">Weekly Goal</span>
-        </div>
-        <span class="progress-count">${weekly} / ${goals.weekly}</span>
-      </div>
-      <div class="progress-bar">
-        <div class="progress-fill" style="width: ${Math.min((weekly / goals.weekly) * 100, 100)}%"></div>
-      </div>
-    </div>
-    <div class="progress-card monthly ${monthly >= goals.monthly ? "complete" : ""}">
-      <div class="progress-header">
-        <div class="progress-label">
-          <span class="progress-icon">📆</span>
-          <span class="progress-title">Monthly Goal</span>
-        </div>
-        <span class="progress-count">${monthly} / ${goals.monthly}</span>
-      </div>
-      <div class="progress-bar">
-        <div class="progress-fill" style="width: ${Math.min((monthly / goals.monthly) * 100, 100)}%"></div>
-      </div>
-    </div>
-  `;
 }
 
 function renderCalendar() {
@@ -882,7 +1119,10 @@ function renderDayView(grid) {
   `;
   detail.appendChild(header);
 
-  if (wins.length === 0) {
+  // Only show non-linked wins in day view (linked ones are counted internally)
+  const visibleWins = wins.filter(win => !win.isLinked);
+  
+  if (visibleWins.length === 0) {
     const empty = document.createElement("div");
     empty.className = "empty-state";
     empty.textContent = "No wins yet. Add one from the panel →";
@@ -890,7 +1130,7 @@ function renderDayView(grid) {
   } else {
     const list = document.createElement("div");
     list.className = "win-list";
-    wins.forEach((win) => {
+    visibleWins.forEach((win) => {
       const item = document.createElement("div");
       item.className = "win-item";
       item.innerHTML = `
@@ -937,7 +1177,8 @@ function createDayCell(date, showWeekday = false) {
 
   const stickers = document.createElement("div");
   stickers.className = "stickers";
-  wins.forEach((win) => {
+  // Only show stickers for non-linked completions (linked ones share parent's sticker)
+  wins.filter(win => !win.isLinked).forEach((win) => {
     const dot = document.createElement("span");
     dot.className = "sticker";
     dot.style.background = win.color;
@@ -1072,12 +1313,37 @@ function addWin(task) {
     color: task.color,
     label: task.label,
     at: Date.now(),
+    isLinked: false, // Not a linked completion
   };
 
   state.completions[key].push(entry);
+  
+  // If this task has linked goals, also increment those
+  if (task.linkedTo && task.linkedTo.length > 0) {
+    task.linkedTo.forEach(linkedTaskId => {
+      const linkedTask = tasks.find(t => t.id === linkedTaskId);
+      if (linkedTask) {
+        // Add a linked completion (won't count toward daily total)
+        // Use the PARENT task's color so they appear as one sticker
+        const linkedEntry = {
+          id: randomId(),
+          taskId: linkedTask.id,
+          category: linkedTask.category,
+          color: task.color, // Use parent task's color for visual grouping
+          label: linkedTask.label,
+          at: Date.now(),
+          isLinked: true, // Mark as linked so it doesn't double count
+          linkedFrom: task.id,
+          linkedFromEntry: entry.id, // Link to the parent entry
+        };
+        state.completions[key].push(linkedEntry);
+      }
+    });
+  }
+  
   saveState();
 
-  const total = state.completions[key].length;
+  const total = countDailyWins(key);
   if (total === 5 || total === 10) {
     celebrate();
   }
@@ -1088,6 +1354,12 @@ function addWin(task) {
   }
 
   render();
+}
+
+// Count daily wins excluding linked completions (to avoid double counting)
+function countDailyWins(dateKey) {
+  const completions = state.completions[dateKey] || [];
+  return completions.filter(c => !c.isLinked).length;
 }
 
 function removeWin(dateKey, id) {
@@ -1136,7 +1408,8 @@ function monthCount() {
   Object.entries(state.completions).forEach(([key, list]) => {
     const date = fromKey(key);
     if (date.getFullYear() === year && date.getMonth() === month) {
-      total += list.length;
+      // Only count non-linked completions to avoid double counting
+      total += list.filter(c => !c.isLinked).length;
     }
   });
   return total;
@@ -1176,7 +1449,9 @@ function mostWinsInDayThisMonth() {
   Object.entries(state.completions).forEach(([key, list]) => {
     const date = fromKey(key);
     if (date.getFullYear() === year && date.getMonth() === month) {
-      best = Math.max(best, list.length);
+      // Only count non-linked completions
+      const nonLinked = list.filter(c => !c.isLinked).length;
+      best = Math.max(best, nonLinked);
     }
   });
   return best;
@@ -1362,7 +1637,8 @@ function daysBetween(prevKey, currentKey) {
 }
 
 function hasWins(date) {
-  return (state.completions[toKey(date)] || []).length > 0;
+  const completions = state.completions[toKey(date)] || [];
+  return completions.filter(c => !c.isLinked).length > 0;
 }
 
 function randomId() {
