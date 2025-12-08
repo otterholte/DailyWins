@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 const cors = require('cors');
+const bcrypt = require('bcryptjs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -64,27 +65,32 @@ function saveAccounts(data) {
 // Routes
 
 // Register new account
-app.post('/api/register', (req, res) => {
+app.post('/api/register', async (req, res) => {
   const { username, password, name } = req.body;
   
   if (!username || !password) {
     return res.status(400).json({ error: 'Username and password required' });
   }
+
+  if (password.length < 4) {
+    return res.status(400).json({ error: 'Password must be at least 4 characters' });
+  }
   
   const data = loadAccounts();
   
-  if (data.accounts.length >= 20) {
-    return res.status(400).json({ error: 'Maximum 20 accounts reached' });
-  }
+  // No user limit!
   
   if (data.accounts.find(a => a.username.toLowerCase() === username.toLowerCase())) {
     return res.status(400).json({ error: 'Username already exists' });
   }
+
+  // Hash the password before storing
+  const hashedPassword = await bcrypt.hash(password, 10);
   
   const newAccount = {
     id: Date.now().toString(),
     username,
-    password, // In production, hash this!
+    password: hashedPassword, // Stored as hash, not plain text!
     name: name || username,
     avatar: null,
     completions: {},
@@ -100,7 +106,7 @@ app.post('/api/register', (req, res) => {
 });
 
 // Login
-app.post('/api/login', (req, res) => {
+app.post('/api/login', async (req, res) => {
   const { username, password } = req.body;
   
   if (!username || !password) {
@@ -109,10 +115,17 @@ app.post('/api/login', (req, res) => {
   
   const data = loadAccounts();
   const account = data.accounts.find(
-    a => a.username.toLowerCase() === username.toLowerCase() && a.password === password
+    a => a.username.toLowerCase() === username.toLowerCase()
   );
   
   if (!account) {
+    return res.status(401).json({ error: 'Invalid username or password' });
+  }
+
+  // Compare password with stored hash
+  const passwordMatch = await bcrypt.compare(password, account.password);
+  
+  if (!passwordMatch) {
     return res.status(401).json({ error: 'Invalid username or password' });
   }
   
@@ -177,7 +190,7 @@ app.post('/api/account/:id/avatar', upload.single('avatar'), (req, res) => {
 });
 
 // Change password
-app.put('/api/account/:id/password', (req, res) => {
+app.put('/api/account/:id/password', async (req, res) => {
   const { currentPassword, newPassword } = req.body;
   const data = loadAccounts();
   const index = data.accounts.findIndex(a => a.id === req.params.id);
@@ -185,19 +198,23 @@ app.put('/api/account/:id/password', (req, res) => {
   if (index === -1) {
     return res.status(404).json({ error: 'Account not found' });
   }
+
+  // Compare current password with stored hash
+  const passwordMatch = await bcrypt.compare(currentPassword, data.accounts[index].password);
   
-  if (data.accounts[index].password !== currentPassword) {
+  if (!passwordMatch) {
     return res.status(401).json({ error: 'Current password is incorrect' });
   }
-  
-  data.accounts[index].password = newPassword;
+
+  // Hash the new password
+  data.accounts[index].password = await bcrypt.hash(newPassword, 10);
   saveAccounts(data);
   
   res.json({ success: true });
 });
 
 // Delete account
-app.delete('/api/account/:id', (req, res) => {
+app.delete('/api/account/:id', async (req, res) => {
   const { password } = req.body;
   const data = loadAccounts();
   const index = data.accounts.findIndex(a => a.id === req.params.id);
@@ -205,8 +222,11 @@ app.delete('/api/account/:id', (req, res) => {
   if (index === -1) {
     return res.status(404).json({ error: 'Account not found' });
   }
+
+  // Compare password with stored hash
+  const passwordMatch = await bcrypt.compare(password, data.accounts[index].password);
   
-  if (data.accounts[index].password !== password) {
+  if (!passwordMatch) {
     return res.status(401).json({ error: 'Password incorrect' });
   }
   
@@ -227,4 +247,3 @@ app.delete('/api/account/:id', (req, res) => {
 app.listen(PORT, () => {
   console.log(`Daily Wins server running at http://localhost:${PORT}`);
 });
-
