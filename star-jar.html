@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Daily Wins</title>
+    <title>Star Jar - Daily Wins</title>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
@@ -11,15 +11,9 @@
       <header class="top-bar">
         <div class="logo">
           <button id="menu-btn" class="menu-btn">☰</button>
-          <h1><span class="logo-icon">★</span> Daily Wins</h1>
+          <h1><span class="logo-icon">⭐</span> Star Jar</h1>
         </div>
         <div class="top-actions">
-          <div class="view-toggle">
-            <button data-view="day" class="active">Day</button>
-            <button data-view="week">Week</button>
-            <button data-view="month">Month</button>
-          </div>
-          <button id="today-btn" class="secondary">Today</button>
           <button id="account-btn" class="icon-btn" title="Profile">👤</button>
         </div>
       </header>
@@ -34,25 +28,25 @@
         <div></div>
       </div>
 
-      <div class="stats-row" id="stats-row"></div>
-      <div class="progress-row" id="progress-row"></div>
-
-      <main class="layout">
-        <section class="calendar-card">
-          <div class="calendar-grid" id="calendar-grid"></div>
-        </section>
-
-        <section class="task-card">
-          <div class="task-card-header">
-            <div class="eyebrow">Add wins for</div>
-            <h2 id="selected-date-label"></h2>
+      <main class="star-jar-main">
+        <div class="jar-container">
+          <div class="jar">
+            <div class="jar-lid"></div>
+            <div class="jar-body">
+              <div class="jar-stars" id="jar-stars"></div>
+            </div>
           </div>
-          <div id="task-sections"></div>
+          <p class="jar-count"><span id="star-count">0</span> star moments this month</p>
+        </div>
+
+        <section class="star-moments-section">
+          <h2>Your Star Moments</h2>
+          <div id="star-moments-list" class="star-moments-list">
+            <p class="empty-message">No star moments this month yet. Add some on the Daily Wins page!</p>
+          </div>
         </section>
       </main>
     </div>
-
-    <div id="confetti"></div>
 
     <!-- Navigation Drawer -->
     <nav id="nav-drawer" class="nav-drawer hidden">
@@ -63,90 +57,14 @@
           <span>Daily Wins</span>
         </div>
         <ul class="nav-links">
-          <li><a href="index.html" class="nav-link active"><span class="nav-icon">🏆</span> Daily Wins</a></li>
-          <li><a href="star-jar.html" class="nav-link"><span class="nav-icon">⭐</span> Star Jar</a></li>
+          <li><a href="index.html" class="nav-link"><span class="nav-icon">🏆</span> Daily Wins</a></li>
+          <li><a href="star-jar.html" class="nav-link active"><span class="nav-icon">⭐</span> Star Jar</a></li>
         </ul>
         <div class="nav-footer">
           <p>Track your wins!</p>
         </div>
       </div>
     </nav>
-
-    <!-- Star Moment Modal -->
-    <div id="star-modal" class="modal hidden">
-      <div class="modal-backdrop"></div>
-      <div class="modal-content star-modal-content">
-        <div class="star-animation">
-          <div class="star-burst">
-            <span class="burst-star">⭐</span>
-            <span class="burst-star">✨</span>
-            <span class="burst-star">⭐</span>
-            <span class="burst-star">✨</span>
-            <span class="burst-star">⭐</span>
-          </div>
-          <div class="big-star">🌟</div>
-        </div>
-        <h3>✨ Star Moment! ✨</h3>
-        <p class="star-subtitle">What made this moment special?</p>
-        <div class="star-note">
-          <textarea id="star-message" placeholder="Describe your star moment..." rows="4"></textarea>
-        </div>
-        <div class="modal-actions">
-          <button id="star-skip" class="secondary">Skip</button>
-          <button id="star-save" class="star-save-btn">Save to Star Jar ⭐</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Confirmation Modal -->
-    <div id="confirm-modal" class="modal hidden">
-      <div class="modal-backdrop"></div>
-      <div class="modal-content">
-        <h3 id="confirm-title">Are you sure?</h3>
-        <p id="confirm-message"></p>
-        <div class="modal-actions">
-          <button id="confirm-cancel" class="secondary">Cancel</button>
-          <button id="confirm-ok" class="danger-btn">Delete</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Edit Task Modal -->
-    <div id="edit-modal" class="modal hidden">
-      <div class="modal-backdrop"></div>
-      <div class="modal-content">
-        <h3 id="edit-title">Edit Task</h3>
-        <div class="form-group">
-          <label>Task Name</label>
-          <input type="text" id="edit-label" placeholder="Enter task name">
-        </div>
-        <div class="form-group">
-          <label>Color</label>
-          <div class="color-picker" id="color-picker"></div>
-        </div>
-        <div class="form-group" id="goal-group">
-          <label>Goal (optional)</label>
-          <input type="number" id="edit-goal" min="1" placeholder="e.g. 3">
-        </div>
-        <div class="modal-actions">
-          <button id="edit-cancel" class="secondary">Cancel</button>
-          <button id="edit-delete" class="danger-btn">Delete</button>
-          <button id="edit-save">Save</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Manage Tasks Modal -->
-    <div id="manage-modal" class="modal hidden">
-      <div class="modal-backdrop"></div>
-      <div class="modal-content">
-        <h3 id="manage-title">Manage tasks</h3>
-        <div id="manage-list" class="manage-list"></div>
-        <div class="modal-actions">
-          <button id="manage-close" class="secondary">Close</button>
-        </div>
-      </div>
-    </div>
 
     <!-- Account Modal -->
     <div id="account-modal" class="modal hidden">
@@ -215,6 +133,7 @@
       </div>
     </div>
 
-    <script src="app.js"></script>
+    <script src="star-jar.js"></script>
   </body>
 </html>
+

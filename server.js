@@ -95,6 +95,7 @@ app.post('/api/register', async (req, res) => {
     avatar: null,
     completions: {},
     tasks: null, // null means use defaults
+    starMoments: [], // Star jar moments
     createdAt: new Date().toISOString()
   };
   
@@ -146,9 +147,9 @@ app.get('/api/account/:id', (req, res) => {
   res.json(safeAccount);
 });
 
-// Update account (name, completions, tasks)
+// Update account (name, completions, tasks, starMoments)
 app.put('/api/account/:id', (req, res) => {
-  const { name, completions, tasks } = req.body;
+  const { name, completions, tasks, starMoments } = req.body;
   const data = loadAccounts();
   const index = data.accounts.findIndex(a => a.id === req.params.id);
   
@@ -159,6 +160,7 @@ app.put('/api/account/:id', (req, res) => {
   if (name !== undefined) data.accounts[index].name = name;
   if (completions !== undefined) data.accounts[index].completions = completions;
   if (tasks !== undefined) data.accounts[index].tasks = tasks;
+  if (starMoments !== undefined) data.accounts[index].starMoments = starMoments;
   
   saveAccounts(data);
   

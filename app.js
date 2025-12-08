@@ -58,6 +58,7 @@ const state = {
   view: "day",
   customTasks: null,
   account: null, // logged in account
+  starMoments: [], // star jar moments
 };
 
 // Modal state
@@ -66,6 +67,7 @@ let editingTask = null;
 let manageCategory = null;
 let closingManageOnEdit = false;
 let isRegistering = false;
+let pendingStarMoment = null; // { date, taskId }
 
 loadState();
 init();
@@ -74,7 +76,28 @@ function init() {
   bindControls();
   bindModals();
   bindAccount();
+  bindNavigation();
+  bindStarModal();
   render();
+}
+
+function bindNavigation() {
+  document.getElementById("menu-btn").addEventListener("click", openNav);
+  document.querySelector(".nav-drawer-backdrop").addEventListener("click", closeNav);
+}
+
+function openNav() {
+  document.getElementById("nav-drawer").classList.remove("hidden");
+}
+
+function closeNav() {
+  document.getElementById("nav-drawer").classList.add("hidden");
+}
+
+function bindStarModal() {
+  document.getElementById("star-skip").addEventListener("click", skipStarMoment);
+  document.getElementById("star-save").addEventListener("click", saveStarMoment);
+  document.querySelector("#star-modal .modal-backdrop").addEventListener("click", skipStarMoment);
 }
 
 function bindControls() {
@@ -272,6 +295,7 @@ async function loadAccountFromServer(accountId) {
     const account = await res.json();
     state.account = account;
     state.completions = account.completions || {};
+    state.starMoments = account.starMoments || [];
     
     if (account.tasks) {
       tasks = account.tasks;
@@ -1058,6 +1082,11 @@ function addWin(task) {
     celebrate();
   }
 
+  // Check if this is a star moments task - show star modal
+  if (isStarMomentTask(task)) {
+    showStarModal(state.selectedDate, task.id);
+  }
+
   render();
 }
 
@@ -1189,6 +1218,7 @@ function loadState() {
         state.customTasks = saved.customTasks;
         tasks = saved.customTasks;
       }
+      if (saved.starMoments) state.starMoments = saved.starMoments;
     }
   } catch (e) {
     console.error("Load failed", e);
@@ -1203,6 +1233,7 @@ function saveState() {
       completions: state.completions,
       view: state.view,
       customTasks: tasks,
+      starMoments: state.starMoments,
     })
   );
   
@@ -1225,12 +1256,59 @@ function syncToServer() {
         body: JSON.stringify({
           completions: state.completions,
           tasks: tasks,
+          starMoments: state.starMoments,
         }),
       });
     } catch (err) {
       console.error("Sync failed:", err);
     }
   }, 1000);
+}
+
+// Star Moments Functions
+function isStarMomentTask(task) {
+  const label = task.label.toLowerCase();
+  return label.includes("star") && label.includes("moment");
+}
+
+function showStarModal(date, taskId) {
+  pendingStarMoment = { date: new Date(date), taskId };
+  document.getElementById("star-message").value = "";
+  document.getElementById("star-modal").classList.remove("hidden");
+}
+
+function closeStarModal() {
+  document.getElementById("star-modal").classList.add("hidden");
+  pendingStarMoment = null;
+}
+
+function skipStarMoment() {
+  closeStarModal();
+}
+
+function saveStarMoment() {
+  const message = document.getElementById("star-message").value.trim();
+  
+  if (!message) {
+    // If no message, just close
+    closeStarModal();
+    return;
+  }
+  
+  if (pendingStarMoment) {
+    const moment = {
+      id: randomId(),
+      date: pendingStarMoment.date.toISOString(),
+      message: message,
+      taskId: pendingStarMoment.taskId,
+      createdAt: new Date().toISOString(),
+    };
+    
+    state.starMoments.push(moment);
+    saveState();
+  }
+  
+  closeStarModal();
 }
 
 // Helpers
