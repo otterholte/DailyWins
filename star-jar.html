@@ -3,7 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#667eea" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Daily Wins" />
     <title>Star Jar - Daily Wins</title>
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" type="image/svg+xml" href="/icons/icon-192.svg" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
@@ -76,8 +83,8 @@
         <div id="auth-view">
           <h3 id="auth-title">Login</h3>
           <div class="form-group">
-            <label>Username</label>
-            <input type="text" id="auth-username" placeholder="Username" autocomplete="username" />
+            <label>Email</label>
+            <input type="email" id="auth-username" placeholder="Email" autocomplete="email" />
           </div>
           <div class="form-group">
             <label>Password</label>
@@ -135,6 +142,7 @@
       </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="star-jar.js"></script>
   </body>
 </html>

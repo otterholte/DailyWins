@@ -1,5 +1,9 @@
 const STORAGE_KEY = "daily-wins-v3";
-const API_BASE = window.location.hostname === 'localhost' ? '' : '';
+
+// Supabase Configuration (same as app.js)
+const SUPABASE_URL = 'https://viwyvwopdrxfzvkxboyn.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpd3l2d29wZHJ4Znp2a3hib3luIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxNzIzOTEsImV4cCI6MjA4MDc0ODM5MX0.uksKQ_bbcMhqN1BhaTp75xyo6Y4pNJi6RRsmu7osvyg';
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const state = {
   currentMonth: new Date(),
@@ -9,44 +13,50 @@ const state = {
 
 init();
 
-function init() {
-  loadState();
+async function init() {
+  loadLocalState();
   bindControls();
-  bindAccount();
+  await bindAccount();
   render();
 }
 
-function loadState() {
-  // Check for saved session
-  const savedAccountId = localStorage.getItem("daily-wins-account-id");
-  if (savedAccountId) {
-    loadAccountFromServer(savedAccountId);
-  } else {
-    // Load from localStorage
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      state.starMoments = parsed.starMoments || [];
-    }
+function loadLocalState() {
+  // Load from localStorage as fallback
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) {
+    const parsed = JSON.parse(saved);
+    state.starMoments = parsed.starMoments || [];
   }
 }
 
-async function loadAccountFromServer(accountId) {
+async function loadUserProfile(user) {
   try {
-    const res = await fetch(API_BASE + "/api/account/" + accountId);
-    if (!res.ok) {
-      localStorage.removeItem("daily-wins-account-id");
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+    
+    if (error) {
+      console.error("Failed to load profile:", error);
       return;
     }
     
-    const account = await res.json();
-    state.account = account;
-    state.starMoments = account.starMoments || [];
+    state.account = {
+      id: user.id,
+      email: user.email,
+      username: profile.username || user.email,
+      name: profile.name || user.email.split('@')[0],
+      avatar: profile.avatar_url,
+    };
+    
+    state.starMoments = profile.star_moments || [];
     
     updateAccountButton();
     render();
+    
   } catch (err) {
-    console.error("Failed to load account:", err);
+    console.error("Failed to load profile:", err);
   }
 }
 
@@ -153,56 +163,75 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
-function deleteMoment(id) {
+async function deleteMoment(id) {
   if (!confirm("Delete this star moment?")) return;
   
   state.starMoments = state.starMoments.filter(m => m.id !== id);
-  saveState();
+  await saveState();
   render();
 }
 
-function saveState() {
+async function saveState() {
   // Save locally
   const saved = localStorage.getItem(STORAGE_KEY);
   const data = saved ? JSON.parse(saved) : {};
   data.starMoments = state.starMoments;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   
-  // Sync to server if logged in
+  // Sync to Supabase if logged in
   if (state.account) {
-    syncToServer();
+    await syncToServer();
   }
 }
 
 async function syncToServer() {
   if (!state.account) return;
   try {
-    await fetch(API_BASE + "/api/account/" + state.account.id, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        starMoments: state.starMoments,
-      }),
-    });
+    await supabase
+      .from('profiles')
+      .update({
+        star_moments: state.starMoments,
+      })
+      .eq('id', state.account.id);
   } catch (err) {
     console.error("Sync failed:", err);
   }
 }
 
-// Account functionality (simplified version)
-function bindAccount() {
+// Account functionality with Supabase
+async function bindAccount() {
   document.getElementById("account-btn").addEventListener("click", openAccount);
   document.querySelector("#account-modal .modal-backdrop").addEventListener("click", closeAccountModal);
   
   document.getElementById("auth-cancel").addEventListener("click", closeAccountModal);
   document.getElementById("auth-toggle").addEventListener("click", toggleAuthMode);
   document.getElementById("auth-submit").addEventListener("click", submitAuth);
+  document.getElementById("auth-password").addEventListener("keypress", (e) => {
+    if (e.key === "Enter") submitAuth();
+  });
   
   document.getElementById("profile-close").addEventListener("click", closeAccountModal);
   document.getElementById("profile-save").addEventListener("click", saveProfile);
   document.getElementById("profile-logout").addEventListener("click", logout);
   document.getElementById("profile-image").addEventListener("change", uploadAvatar);
   document.getElementById("change-password-btn").addEventListener("click", changePassword);
+  
+  // Check for existing Supabase session
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session) {
+    await loadUserProfile(session.user);
+  }
+  
+  // Listen for auth changes
+  supabase.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_IN' && session) {
+      await loadUserProfile(session.user);
+    } else if (event === 'SIGNED_OUT') {
+      state.account = null;
+      updateAccountButton();
+      render();
+    }
+  });
 }
 
 let isRegistering = false;
@@ -233,12 +262,12 @@ function showProfileView() {
   
   if (state.account) {
     document.getElementById("profile-display-name").textContent = state.account.name;
-    document.getElementById("profile-username").textContent = "@" + state.account.username;
+    document.getElementById("profile-username").textContent = state.account.email || state.account.username;
     document.getElementById("profile-name").value = state.account.name;
     
     const preview = document.getElementById("avatar-preview");
     if (state.account.avatar) {
-      preview.innerHTML = `<img src="${API_BASE}${state.account.avatar}" alt="Avatar">`;
+      preview.innerHTML = `<img src="${state.account.avatar}" alt="Avatar">`;
     } else {
       preview.innerHTML = "👤";
     }
@@ -270,48 +299,65 @@ function updateAuthUI() {
 }
 
 async function submitAuth() {
-  const username = document.getElementById("auth-username").value.trim();
+  const email = document.getElementById("auth-username").value.trim();
   const password = document.getElementById("auth-password").value;
   const name = document.getElementById("auth-name").value.trim();
   
-  if (!username || !password) {
-    showAuthError("Please enter username and password");
+  if (!email || !password) {
+    showAuthError("Please enter email and password");
     return;
   }
   
   try {
-    const endpoint = isRegistering ? "/api/register" : "/api/login";
-    const body = isRegistering 
-      ? { username, password, name: name || username }
-      : { username, password };
-    
-    const res = await fetch(API_BASE + endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    
-    const data = await res.json();
-    
-    if (!res.ok) {
-      showAuthError(data.error || "Something went wrong");
-      return;
+    if (isRegistering) {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { name: name || email.split('@')[0] }
+        }
+      });
+      
+      if (error) {
+        showAuthError(error.message);
+        return;
+      }
+      
+      if (data.user) {
+        await supabase.from('profiles').update({ 
+          name: name || email.split('@')[0],
+          username: email 
+        }).eq('id', data.user.id);
+        
+        await loadUserProfile(data.user);
+        showProfileView();
+      }
+    } else {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      
+      if (error) {
+        showAuthError(error.message);
+        return;
+      }
+      
+      if (data.user) {
+        await loadUserProfile(data.user);
+        showProfileView();
+      }
     }
     
-    state.account = data.account;
-    state.starMoments = data.account.starMoments || [];
-    localStorage.setItem("daily-wins-account-id", data.account.id);
-    
+    // Clear form
     document.getElementById("auth-username").value = "";
     document.getElementById("auth-password").value = "";
     document.getElementById("auth-name").value = "";
     
-    updateAccountButton();
-    showProfileView();
     render();
     
   } catch (err) {
-    showAuthError("Could not connect to server");
+    showAuthError("Something went wrong. Please try again.");
     console.error(err);
   }
 }
@@ -325,7 +371,7 @@ function showAuthError(message) {
 function updateAccountButton() {
   const btn = document.getElementById("account-btn");
   if (state.account && state.account.avatar) {
-    btn.innerHTML = `<img src="${API_BASE}${state.account.avatar}" alt="" class="account-avatar">`;
+    btn.innerHTML = `<img src="${state.account.avatar}" alt="" class="account-avatar">`;
   } else if (state.account) {
     btn.textContent = state.account.name.charAt(0).toUpperCase();
   } else {
@@ -340,18 +386,19 @@ async function saveProfile() {
   if (!name) return;
   
   try {
-    const res = await fetch(API_BASE + "/api/account/" + state.account.id, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
-    });
+    const { error } = await supabase
+      .from('profiles')
+      .update({ name })
+      .eq('id', state.account.id);
     
-    const data = await res.json();
-    if (res.ok) {
-      state.account = data.account;
-      showProfileView();
-      updateAccountButton();
+    if (error) {
+      console.error("Save failed:", error);
+      return;
     }
+    
+    state.account.name = name;
+    showProfileView();
+    updateAccountButton();
   } catch (err) {
     console.error(err);
   }
@@ -360,55 +407,72 @@ async function saveProfile() {
 async function uploadAvatar(e) {
   if (!state.account || !e.target.files[0]) return;
   
-  const formData = new FormData();
-  formData.append("avatar", e.target.files[0]);
+  const file = e.target.files[0];
+  const fileExt = file.name.split('.').pop();
+  const fileName = `${state.account.id}-${Date.now()}.${fileExt}`;
   
   try {
-    const res = await fetch(API_BASE + "/api/account/" + state.account.id + "/avatar", {
-      method: "POST",
-      body: formData,
-    });
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(fileName, file, { upsert: true });
     
-    const data = await res.json();
-    if (res.ok) {
-      state.account.avatar = data.avatar;
-      showProfileView();
-      updateAccountButton();
+    if (uploadError) {
+      console.log("Avatar upload skipped - storage not configured");
+      return;
     }
+    
+    const { data: { publicUrl } } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(fileName);
+    
+    await supabase
+      .from('profiles')
+      .update({ avatar_url: publicUrl })
+      .eq('id', state.account.id);
+    
+    state.account.avatar = publicUrl;
+    showProfileView();
+    updateAccountButton();
   } catch (err) {
-    console.error(err);
+    console.error("Could not upload avatar:", err);
   }
 }
 
 async function changePassword() {
   if (!state.account) return;
   
-  const current = document.getElementById("current-password").value;
   const newPass = document.getElementById("new-password").value;
   
-  if (!current || !newPass) return;
+  if (!newPass) return;
+  
+  if (newPass.length < 6) {
+    alert("Password must be at least 6 characters");
+    return;
+  }
   
   try {
-    const res = await fetch(API_BASE + "/api/account/" + state.account.id + "/password", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ currentPassword: current, newPassword: newPass }),
+    const { error } = await supabase.auth.updateUser({
+      password: newPass
     });
     
-    if (res.ok) {
-      document.getElementById("current-password").value = "";
-      document.getElementById("new-password").value = "";
-      alert("Password changed!");
+    if (error) {
+      alert(error.message || "Failed to change password");
+      return;
     }
+    
+    document.getElementById("current-password").value = "";
+    document.getElementById("new-password").value = "";
+    alert("Password changed!");
   } catch (err) {
     console.error(err);
   }
 }
 
-function logout() {
+async function logout() {
+  await supabase.auth.signOut();
+  
   state.account = null;
   state.starMoments = [];
-  localStorage.removeItem("daily-wins-account-id");
   
   const saved = localStorage.getItem(STORAGE_KEY);
   if (saved) {
@@ -420,4 +484,3 @@ function logout() {
   closeAccountModal();
   render();
 }
-
