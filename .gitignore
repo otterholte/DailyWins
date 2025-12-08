@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+
+# Data files (contain passwords - don't commit!)
+data/
+uploads/
+
+# Environment
+.env
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+

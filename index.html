@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Daily Wins</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="top-bar">
+        <div class="logo">
+          <h1><span class="logo-icon">★</span> Daily Wins</h1>
+        </div>
+        <div class="top-actions">
+          <div class="view-toggle">
+            <button data-view="day" class="active">Day</button>
+            <button data-view="week">Week</button>
+            <button data-view="month">Month</button>
+          </div>
+          <button id="today-btn" class="secondary">Today</button>
+          <button id="account-btn" class="icon-btn" title="Profile">👤</button>
+        </div>
+      </header>
+
+      <div class="nav-row">
+        <div></div>
+        <div class="nav-center">
+          <button id="prev-btn">‹</button>
+          <span class="period-label" id="period-label"></span>
+          <button id="next-btn">›</button>
+        </div>
+        <div></div>
+      </div>
+
+      <div class="stats-row" id="stats-row"></div>
+      <div class="progress-row" id="progress-row"></div>
+
+      <main class="layout">
+        <section class="calendar-card">
+          <div class="calendar-grid" id="calendar-grid"></div>
+        </section>
+
+        <section class="task-card">
+          <div class="task-card-header">
+            <div class="eyebrow">Add wins for</div>
+            <h2 id="selected-date-label"></h2>
+          </div>
+          <div id="task-sections"></div>
+        </section>
+      </main>
+    </div>
+
+    <div id="confetti"></div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirm-modal" class="modal hidden">
+      <div class="modal-backdrop"></div>
+      <div class="modal-content">
+        <h3 id="confirm-title">Are you sure?</h3>
+        <p id="confirm-message"></p>
+        <div class="modal-actions">
+          <button id="confirm-cancel" class="secondary">Cancel</button>
+          <button id="confirm-ok" class="danger-btn">Delete</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit Task Modal -->
+    <div id="edit-modal" class="modal hidden">
+      <div class="modal-backdrop"></div>
+      <div class="modal-content">
+        <h3 id="edit-title">Edit Task</h3>
+        <div class="form-group">
+          <label>Task Name</label>
+          <input type="text" id="edit-label" placeholder="Enter task name">
+        </div>
+        <div class="form-group">
+          <label>Color</label>
+          <div class="color-picker" id="color-picker"></div>
+        </div>
+        <div class="form-group" id="goal-group">
+          <label>Goal (optional)</label>
+          <input type="number" id="edit-goal" min="1" placeholder="e.g. 3">
+        </div>
+        <div class="modal-actions">
+          <button id="edit-cancel" class="secondary">Cancel</button>
+          <button id="edit-delete" class="danger-btn">Delete</button>
+          <button id="edit-save">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Manage Tasks Modal -->
+    <div id="manage-modal" class="modal hidden">
+      <div class="modal-backdrop"></div>
+      <div class="modal-content">
+        <h3 id="manage-title">Manage tasks</h3>
+        <div id="manage-list" class="manage-list"></div>
+        <div class="modal-actions">
+          <button id="manage-close" class="secondary">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Account Modal -->
+    <div id="account-modal" class="modal hidden">
+      <div class="modal-backdrop"></div>
+      <div class="modal-content account-modal-content">
+        <!-- Login/Register View -->
+        <div id="auth-view">
+          <h3 id="auth-title">Login</h3>
+          <div class="form-group">
+            <label>Username</label>
+            <input type="text" id="auth-username" placeholder="Username" autocomplete="username" />
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="auth-password" placeholder="Password" autocomplete="current-password" />
+          </div>
+          <div class="form-group hidden" id="auth-name-group">
+            <label>Display Name</label>
+            <input type="text" id="auth-name" placeholder="Your name" />
+          </div>
+          <p id="auth-error" class="error-text hidden"></p>
+          <div class="modal-actions">
+            <button id="auth-cancel" class="secondary">Cancel</button>
+            <button id="auth-toggle" class="text">Create Account</button>
+            <button id="auth-submit">Login</button>
+          </div>
+        </div>
+        
+        <!-- Profile View (when logged in) -->
+        <div id="profile-view" class="hidden">
+          <div class="profile-header">
+            <div class="avatar-container" id="avatar-container">
+              <div class="avatar-preview" id="avatar-preview">👤</div>
+              <label class="avatar-upload-btn" for="profile-image">📷</label>
+              <input type="file" id="profile-image" accept="image/*" class="hidden" />
+            </div>
+            <div class="profile-info">
+              <h3 id="profile-display-name">User</h3>
+              <p id="profile-username" class="muted">@username</p>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Display Name</label>
+            <input type="text" id="profile-name" placeholder="Your name" />
+          </div>
+          <details class="password-section">
+            <summary>Change Password</summary>
+            <div class="form-group">
+              <label>Current Password</label>
+              <input type="password" id="current-password" placeholder="Current password" />
+            </div>
+            <div class="form-group">
+              <label>New Password</label>
+              <input type="password" id="new-password" placeholder="New password" />
+            </div>
+            <button id="change-password-btn" class="secondary">Update Password</button>
+          </details>
+          <p id="profile-error" class="error-text hidden"></p>
+          <p id="profile-success" class="success-text hidden"></p>
+          <div class="modal-actions">
+            <button id="profile-logout" class="text danger">Logout</button>
+            <button id="profile-close" class="secondary">Close</button>
+            <button id="profile-save">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
