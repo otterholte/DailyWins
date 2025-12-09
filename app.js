@@ -240,6 +240,34 @@ function canEditBuddyData() {
 function bindNavigation() {
   document.getElementById("menu-btn").addEventListener("click", openNav);
   document.querySelector(".nav-drawer-backdrop").addEventListener("click", closeNav);
+  
+  // Dark mode toggle
+  initDarkMode();
+}
+
+function initDarkMode() {
+  const toggle = document.getElementById("dark-mode-switch");
+  if (!toggle) return;
+  
+  // Load saved preference
+  const savedTheme = localStorage.getItem("theme");
+  if (savedTheme === "dark") {
+    document.documentElement.setAttribute("data-theme", "dark");
+    toggle.classList.add("active");
+  }
+  
+  toggle.addEventListener("click", () => {
+    const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+    if (isDark) {
+      document.documentElement.removeAttribute("data-theme");
+      localStorage.setItem("theme", "light");
+      toggle.classList.remove("active");
+    } else {
+      document.documentElement.setAttribute("data-theme", "dark");
+      localStorage.setItem("theme", "dark");
+      toggle.classList.add("active");
+    }
+  });
 }
 
 function openNav() {
@@ -2242,16 +2270,19 @@ function countRange(category, range) {
 
 function celebrate() {
   const container = document.getElementById("confetti");
-  const colors = ["#ff6b6b", "#ffd43b", "#69db7c", "#4dabf7", "#da77f2", "#ffa94d"];
-  for (let i = 0; i < 30; i++) {
+  const colors = ["#ff6b6b", "#ffd43b", "#69db7c", "#4dabf7", "#da77f2", "#ffa94d", "#ff8787", "#74c0fc", "#63e6be"];
+  
+  // Create 80 confetti pieces for more impact
+  for (let i = 0; i < 80; i++) {
     const piece = document.createElement("div");
     piece.className = "confetti-piece";
     piece.style.background = colors[Math.floor(Math.random() * colors.length)];
-    piece.style.left = `${15 + Math.random() * 70}%`;
-    piece.style.top = "0";
-    piece.style.animationDelay = `${Math.random() * 0.4}s`;
+    piece.style.left = `${5 + Math.random() * 90}%`;
+    piece.style.top = `${-10 + Math.random() * 20}%`;
+    piece.style.animationDelay = `${Math.random() * 0.6}s`;
+    piece.style.animationDuration = `${1.5 + Math.random() * 1}s`;
     container.appendChild(piece);
-    setTimeout(() => piece.remove(), 1500);
+    setTimeout(() => piece.remove(), 3000);
   }
 }
 
