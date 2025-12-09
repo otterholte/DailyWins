@@ -179,9 +179,6 @@ function bindControls() {
   document.getElementById("menu-btn").addEventListener("click", openNav);
   document.querySelector(".nav-drawer-backdrop").addEventListener("click", closeNav);
   
-  // Dark mode toggle
-  initDarkMode();
-  
   // Month navigation
   document.getElementById("prev-btn").addEventListener("click", () => navigateMonth(-1));
   document.getElementById("next-btn").addEventListener("click", () => navigateMonth(1));
@@ -193,31 +190,6 @@ function openNav() {
 
 function closeNav() {
   document.getElementById("nav-drawer").classList.add("hidden");
-}
-
-function initDarkMode() {
-  const toggle = document.getElementById("dark-mode-switch");
-  if (!toggle) return;
-  
-  // Load saved preference
-  const savedTheme = localStorage.getItem("theme");
-  if (savedTheme === "dark") {
-    document.documentElement.setAttribute("data-theme", "dark");
-    toggle.classList.add("active");
-  }
-  
-  toggle.addEventListener("click", () => {
-    const isDark = document.documentElement.getAttribute("data-theme") === "dark";
-    if (isDark) {
-      document.documentElement.removeAttribute("data-theme");
-      localStorage.setItem("theme", "light");
-      toggle.classList.remove("active");
-    } else {
-      document.documentElement.setAttribute("data-theme", "dark");
-      localStorage.setItem("theme", "dark");
-      toggle.classList.add("active");
-    }
-  });
 }
 
 // Load buddies you have access to and display in nav menu

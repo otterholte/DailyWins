@@ -50,34 +50,6 @@ function bindNavigation() {
   document.querySelector(".nav-drawer-backdrop").addEventListener("click", () => {
     document.getElementById("nav-drawer").classList.add("hidden");
   });
-  
-  // Dark mode toggle
-  initDarkMode();
-}
-
-function initDarkMode() {
-  const toggle = document.getElementById("dark-mode-switch");
-  if (!toggle) return;
-  
-  // Load saved preference
-  const savedTheme = localStorage.getItem("theme");
-  if (savedTheme === "dark") {
-    document.documentElement.setAttribute("data-theme", "dark");
-    toggle.classList.add("active");
-  }
-  
-  toggle.addEventListener("click", () => {
-    const isDark = document.documentElement.getAttribute("data-theme") === "dark";
-    if (isDark) {
-      document.documentElement.removeAttribute("data-theme");
-      localStorage.setItem("theme", "light");
-      toggle.classList.remove("active");
-    } else {
-      document.documentElement.setAttribute("data-theme", "dark");
-      localStorage.setItem("theme", "dark");
-      toggle.classList.add("active");
-    }
-  });
 }
 
 // Load buddies you have access to and display in nav menu
