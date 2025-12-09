@@ -2929,6 +2929,21 @@ textarea#redeem-note:focus {
   background: linear-gradient(135deg, rgba(0, 122, 255, 0.05), rgba(52, 199, 89, 0.05));
   border-radius: 12px;
   border: 1px solid rgba(0, 122, 255, 0.1);
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.buddy-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.15);
+}
+
+.buddy-arrow {
+  font-size: 20px;
+  color: var(--accent);
+  margin-left: auto;
 }
 
 .buddy-avatar {

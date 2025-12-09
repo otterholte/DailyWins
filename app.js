@@ -204,6 +204,22 @@ function showBuddyBanner() {
   
   const app = document.querySelector(".app");
   app.insertBefore(banner, app.firstChild.nextSibling);
+  
+  // Update navigation links to preserve buddy context
+  updateNavLinksForBuddy();
+}
+
+function updateNavLinksForBuddy() {
+  if (!viewingBuddy) return;
+  
+  // Update all nav links to include buddy parameter
+  document.querySelectorAll('.nav-link').forEach(link => {
+    const href = link.getAttribute('href');
+    if (href && !href.includes('buddy=')) {
+      const separator = href.includes('?') ? '&' : '?';
+      link.setAttribute('href', `${href}${separator}buddy=${viewingBuddy.id}`);
+    }
+  });
 }
 
 function removeBuddyBanner() {

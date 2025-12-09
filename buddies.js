@@ -311,19 +311,15 @@ async function loadBuddies() {
   container.innerHTML = shares.map(share => {
     const owner = profileMap[share.owner_id] || {};
     return `
-    <div class="buddy-card" data-owner-id="${owner.id}">
+    <a href="index.html?buddy=${owner.id}" class="buddy-card" data-owner-id="${owner.id}">
       <div class="buddy-avatar">${owner.avatar_url ? `<img src="${owner.avatar_url}" alt="">` : '👤'}</div>
       <div class="buddy-info">
         <div class="buddy-name">${owner.name || owner.username || 'Unknown'}</div>
         <div class="buddy-username">@${owner.username || 'unknown'}</div>
         ${share.can_edit ? '<span class="buddy-edit-badge">Can Edit</span>' : '<span class="buddy-view-badge">View Only</span>'}
       </div>
-      <div class="buddy-actions">
-        <a href="index.html?buddy=${owner.id}" class="buddy-link">Daily Wins</a>
-        <a href="star-jar.html?buddy=${owner.id}" class="buddy-link">Star Jar</a>
-        <a href="rewards.html?buddy=${owner.id}" class="buddy-link">Rewards</a>
-      </div>
-    </div>
+      <div class="buddy-arrow">→</div>
+    </a>
   `}).join("");
 }
 
