@@ -1090,7 +1090,7 @@ function renderStats() {
 
   const streak = currentStreak();
   const mostInDay = mostWinsInDayThisMonth();
-  const monthTotal = monthCount();
+  const selfCareTotal = selfCareMonthCount();
 
   row.innerHTML = `
     <div class="stat-card streak">
@@ -1104,9 +1104,9 @@ function renderStats() {
       <div class="stat-label">Most wins in a day</div>
     </div>
     <div class="stat-card total">
-      <div class="stat-icon">✨</div>
-      <div class="stat-value">${monthTotal}</div>
-      <div class="stat-label">Total wins this month</div>
+      <div class="stat-icon">💚</div>
+      <div class="stat-value">${selfCareTotal}</div>
+      <div class="stat-label">Self care this month</div>
     </div>
   `;
 }
@@ -1470,6 +1470,20 @@ function monthCount() {
     if (date.getFullYear() === year && date.getMonth() === month) {
       // Only count non-linked completions to avoid double counting
       total += list.filter(c => !c.isLinked).length;
+    }
+  });
+  return total;
+}
+
+function selfCareMonthCount() {
+  const year = state.currentMonth.getFullYear();
+  const month = state.currentMonth.getMonth();
+  const selfCareTasks = tasks.filter(t => t.category === "Self Care").map(t => t.id);
+  let total = 0;
+  Object.entries(state.completions).forEach(([key, list]) => {
+    const date = fromKey(key);
+    if (date.getFullYear() === year && date.getMonth() === month) {
+      total += list.filter(c => selfCareTasks.includes(c.taskId)).length;
     }
   });
   return total;
