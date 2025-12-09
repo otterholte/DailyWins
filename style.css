@@ -822,7 +822,7 @@ button.danger {
 }
 
 .task-progress-fill.complete {
-  animation: shimmer 1.5s ease-in-out;
+  /* No animation - prevents flickering on update */
 }
 
 @keyframes shimmer {
