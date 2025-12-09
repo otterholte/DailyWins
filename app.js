@@ -2258,6 +2258,25 @@ function celebrate() {
   }
 }
 
+function celebrateSuperStar() {
+  const container = document.getElementById("confetti");
+  // Purple and gold colors for super star celebration
+  const colors = ["#9b59b6", "#8e44ad", "#663399", "#ffd700", "#ffec8b", "#daa520", "#e0b0ff", "#da70d6"];
+  
+  // Create 120 confetti pieces for super star
+  for (let i = 0; i < 120; i++) {
+    const piece = document.createElement("div");
+    piece.className = "confetti-piece super-confetti";
+    piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+    piece.style.left = `${Math.random() * 100}%`;
+    piece.style.top = `${-10 + Math.random() * 20}%`;
+    piece.style.animationDelay = `${Math.random() * 0.8}s`;
+    piece.style.animationDuration = `${2 + Math.random() * 1.5}s`;
+    container.appendChild(piece);
+    setTimeout(() => piece.remove(), 4000);
+  }
+}
+
 function loadState() {
   // Don't load localStorage when viewing a buddy - their data will be loaded separately
   const params = new URLSearchParams(window.location.search);
@@ -2341,6 +2360,8 @@ function isStarMomentTask(task) {
 function showStarModal(date, taskId) {
   pendingStarMoment = { date: new Date(date), taskId };
   document.getElementById("star-message").value = "";
+  const superStarCheck = document.getElementById("super-star-check");
+  if (superStarCheck) superStarCheck.checked = false;
   document.getElementById("star-modal").classList.remove("hidden");
 }
 
@@ -2363,16 +2384,24 @@ function saveStarMoment() {
   }
   
   if (pendingStarMoment) {
+    const isSuperStar = document.getElementById("super-star-check")?.checked || false;
+    
     const moment = {
       id: randomId(),
       date: pendingStarMoment.date.toISOString(),
       message: message,
       taskId: pendingStarMoment.taskId,
       createdAt: new Date().toISOString(),
+      isSuperStar: isSuperStar,
     };
     
     state.starMoments.push(moment);
     saveState();
+    
+    // Extra celebration for super stars
+    if (isSuperStar) {
+      celebrateSuperStar();
+    }
   }
   
   closeStarModal();

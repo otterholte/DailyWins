@@ -266,9 +266,11 @@ function renderJar() {
   
   countEl.textContent = moments.length;
   
-  // Add stars to jar
-  jarStars.innerHTML = moments.map(() => 
-    `<span class="jar-star">⭐</span>`
+  // Add stars to jar - super stars are purple and larger
+  jarStars.innerHTML = moments.map(m => 
+    m.isSuperStar 
+      ? `<span class="jar-star super-star">⭐</span>`
+      : `<span class="jar-star">⭐</span>`
   ).join('');
 }
 
@@ -285,8 +287,11 @@ function renderMoments() {
   const sorted = [...moments].sort((a, b) => new Date(b.date) - new Date(a.date));
   
   list.innerHTML = sorted.map(moment => `
-    <div class="star-moment-card" data-id="${moment.id}">
-      <div class="star-moment-date">${formatDate(moment.date)}</div>
+    <div class="star-moment-card ${moment.isSuperStar ? 'super-star-card' : ''}" data-id="${moment.id}">
+      <div class="star-moment-header">
+        <div class="star-moment-date">${formatDate(moment.date)}</div>
+        ${moment.isSuperStar ? '<span class="super-star-badge">💜 Super Star!</span>' : ''}
+      </div>
       <div class="star-moment-message">${escapeHtml(moment.message)}</div>
       <div class="star-moment-actions">
         <button onclick="deleteMoment('${moment.id}')">🗑️ Delete</button>

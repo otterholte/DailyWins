@@ -2065,6 +2065,75 @@ button.text.danger:hover {
   padding: 12px 24px !important;
 }
 
+/* Super Star Toggle */
+.super-star-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  margin: 12px 0;
+  background: linear-gradient(135deg, rgba(155, 89, 182, 0.08), rgba(142, 68, 173, 0.08));
+  border: 2px solid rgba(155, 89, 182, 0.2);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.super-star-toggle:hover {
+  background: linear-gradient(135deg, rgba(155, 89, 182, 0.15), rgba(142, 68, 173, 0.15));
+  border-color: rgba(155, 89, 182, 0.4);
+}
+
+.super-star-toggle input {
+  display: none;
+}
+
+.super-star-checkbox {
+  width: 24px;
+  height: 24px;
+  border: 2px solid rgba(155, 89, 182, 0.4);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  background: white;
+  flex-shrink: 0;
+}
+
+.super-star-checkbox::after {
+  content: '✓';
+  font-size: 14px;
+  color: white;
+  opacity: 0;
+  transform: scale(0);
+  transition: all 0.2s ease;
+}
+
+.super-star-toggle input:checked + .super-star-checkbox {
+  background: linear-gradient(135deg, #9b59b6, #8e44ad);
+  border-color: #8e44ad;
+}
+
+.super-star-toggle input:checked + .super-star-checkbox::after {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.super-star-toggle input:checked ~ .super-star-text {
+  color: #8e44ad;
+}
+
+.super-star-text {
+  font-size: 14px;
+  color: #666;
+  transition: color 0.2s ease;
+}
+
+.super-star-text strong {
+  color: #9b59b6;
+}
+
 /* Star Jar Page */
 .star-jar-main {
   padding: 20px;
@@ -2143,6 +2212,12 @@ button.text.danger:hover {
   filter: drop-shadow(0 2px 4px rgba(255, 200, 0, 0.4));
 }
 
+.jar-star.super-star {
+  font-size: 42px;
+  filter: hue-rotate(260deg) saturate(1.5) drop-shadow(0 2px 8px rgba(155, 89, 182, 0.6));
+  animation: floatSuperStar 2s ease-in-out infinite;
+}
+
 .jar-star:nth-child(odd) {
   animation-delay: -1.5s;
 }
@@ -2150,6 +2225,11 @@ button.text.danger:hover {
 @keyframes floatStar {
   0%, 100% { transform: translateY(0) rotate(0deg); }
   50% { transform: translateY(-5px) rotate(10deg); }
+}
+
+@keyframes floatSuperStar {
+  0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
+  50% { transform: translateY(-8px) rotate(15deg) scale(1.1); }
 }
 
 .jar-count {
@@ -2207,13 +2287,49 @@ button.text.danger:hover {
   opacity: 0.1;
 }
 
+/* Super Star Card */
+.star-moment-card.super-star-card {
+  background: linear-gradient(135deg, #f3e8ff, #ede4ff);
+  border-color: #9b59b6;
+}
+
+.star-moment-card.super-star-card::before {
+  content: '💜';
+  filter: none;
+}
+
+.star-moment-card.super-star-card .star-moment-date {
+  color: #8e44ad;
+}
+
+.star-moment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.super-star-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: #8e44ad;
+  background: rgba(155, 89, 182, 0.15);
+  padding: 4px 10px;
+  border-radius: 20px;
+  animation: shimmer 2s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
 .star-moment-date {
   font-size: 12px;
   color: #c9a227;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  margin-bottom: 8px;
 }
 
 .star-moment-message {
