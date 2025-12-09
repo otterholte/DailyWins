@@ -383,8 +383,20 @@ async function submitAuth() {
         showProfileView();
       }
     } else {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
+      console.log("Attempting login with email:", email);
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        console.error("Login error:", error);
+        showAuthError(error.message + ` (tried: ${email})`);
+        return;
+      }
+      if (data.user) {
+        currentUser = data.user;
+        await loadUserProfile();
+        showBuddiesContent();
+        loadSharedWith();
+        loadBuddies();
+      }
       closeAccountModal();
     }
     
