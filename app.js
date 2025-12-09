@@ -250,6 +250,50 @@ function closeNav() {
   document.getElementById("nav-drawer").classList.add("hidden");
 }
 
+// Load buddies you have access to and display in nav menu
+async function loadNavBuddies() {
+  const navList = document.getElementById("nav-buddy-list");
+  if (!navList) return;
+  
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    navList.innerHTML = '';
+    return;
+  }
+  
+  // Get shares where you're the buddy (people who shared with you)
+  const { data: shares, error } = await supabase
+    .from("buddy_shares")
+    .select("owner_id")
+    .eq("buddy_id", session.user.id);
+  
+  if (error || !shares || shares.length === 0) {
+    navList.innerHTML = '';
+    return;
+  }
+  
+  // Fetch owner profiles
+  const ownerIds = shares.map(s => s.owner_id);
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, name, username, avatar_url")
+    .in("id", ownerIds);
+  
+  if (!profiles || profiles.length === 0) {
+    navList.innerHTML = '';
+    return;
+  }
+  
+  navList.innerHTML = profiles.map(buddy => `
+    <li>
+      <a href="index.html?buddy=${buddy.id}" class="nav-buddy-link">
+        <div class="nav-buddy-avatar">${buddy.avatar_url ? `<img src="${buddy.avatar_url}" alt="">` : '👤'}</div>
+        <span class="nav-buddy-name">${buddy.name || buddy.username || 'Unknown'}</span>
+      </a>
+    </li>
+  `).join('');
+}
+
 function bindStarModal() {
   document.getElementById("star-skip").addEventListener("click", skipStarMoment);
   document.getElementById("star-save").addEventListener("click", saveStarMoment);
@@ -542,6 +586,7 @@ async function loadUserProfile(user) {
     }
     
     updateAccountButton();
+    loadNavBuddies();
     render();
     
   } catch (err) {

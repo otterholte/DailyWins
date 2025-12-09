@@ -52,6 +52,49 @@ function bindNavigation() {
   });
 }
 
+// Load buddies you have access to and display in nav menu
+async function loadNavBuddies() {
+  const navList = document.getElementById("nav-buddy-list");
+  if (!navList) return;
+  
+  if (!currentUser) {
+    navList.innerHTML = '';
+    return;
+  }
+  
+  // Get shares where you're the buddy (people who shared with you)
+  const { data: shares, error } = await supabase
+    .from("buddy_shares")
+    .select("owner_id")
+    .eq("buddy_id", currentUser.id);
+  
+  if (error || !shares || shares.length === 0) {
+    navList.innerHTML = '';
+    return;
+  }
+  
+  // Fetch owner profiles
+  const ownerIds = shares.map(s => s.owner_id);
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, name, username, avatar_url")
+    .in("id", ownerIds);
+  
+  if (!profiles || profiles.length === 0) {
+    navList.innerHTML = '';
+    return;
+  }
+  
+  navList.innerHTML = profiles.map(buddy => `
+    <li>
+      <a href="index.html?buddy=${buddy.id}" class="nav-buddy-link">
+        <div class="nav-buddy-avatar">${buddy.avatar_url ? `<img src="${buddy.avatar_url}" alt="">` : '👤'}</div>
+        <span class="nav-buddy-name">${buddy.name || buddy.username || 'Unknown'}</span>
+      </a>
+    </li>
+  `).join('');
+}
+
 function bindAccount() {
   document.getElementById("account-btn").addEventListener("click", openAccount);
   document.getElementById("auth-cancel").addEventListener("click", closeAccountModal);
@@ -369,6 +412,7 @@ async function loadUserProfile() {
   
   userProfile = data;
   updateAccountButton();
+  loadNavBuddies();
 }
 
 function openAccount() {
