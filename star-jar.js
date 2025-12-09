@@ -288,10 +288,7 @@ function renderMoments() {
   
   list.innerHTML = sorted.map(moment => `
     <div class="star-moment-card ${moment.isSuperStar ? 'super-star-card' : ''}" data-id="${moment.id}">
-      <div class="star-moment-header">
-        <div class="star-moment-date">${formatDate(moment.date)}</div>
-        ${moment.isSuperStar ? '<span class="super-star-badge">💜 Super Star!</span>' : ''}
-      </div>
+      <div class="star-moment-date">${formatDate(moment.date)}</div>
       <div class="star-moment-message">${escapeHtml(moment.message)}</div>
       <div class="star-moment-actions">
         <button onclick="deleteMoment('${moment.id}')">🗑️ Delete</button>

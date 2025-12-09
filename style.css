@@ -2214,7 +2214,7 @@ button.text.danger:hover {
 
 .jar-star.super-star {
   font-size: 42px;
-  filter: hue-rotate(260deg) saturate(3) brightness(0.75) drop-shadow(0 2px 8px rgba(128, 0, 128, 0.8));
+  filter: hue-rotate(270deg) saturate(2) brightness(0.55) drop-shadow(0 1px 3px rgba(75, 0, 130, 0.4));
   animation: floatSuperStar 4s ease-in-out infinite;
 }
 
@@ -2302,34 +2302,13 @@ button.text.danger:hover {
   color: #8e44ad;
 }
 
-.star-moment-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-}
-
-.super-star-badge {
-  font-size: 11px;
-  font-weight: 600;
-  color: #8e44ad;
-  background: rgba(155, 89, 182, 0.15);
-  padding: 4px 10px;
-  border-radius: 20px;
-  animation: shimmer 2s ease-in-out infinite;
-}
-
-@keyframes shimmer {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-}
-
 .star-moment-date {
   font-size: 12px;
   color: #c9a227;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  margin-bottom: 8px;
 }
 
 .star-moment-message {
