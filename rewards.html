@@ -7,7 +7,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Daily Wins" />
-    <title>Star Jar - Daily Wins</title>
+    <title>Rewards - Daily Wins</title>
     <link rel="manifest" href="/manifest.json" />
     <link rel="icon" type="image/svg+xml" href="/icons/icon-192.svg" />
     <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
@@ -20,38 +20,43 @@
           <button id="menu-btn" class="menu-btn">☰</button>
         </div>
         <div class="header-center">
-          <h1><span class="logo-icon">⭐</span> Star Jar</h1>
+          <h1><span class="logo-icon">🎁</span> Rewards</h1>
         </div>
         <div class="header-right">
           <button id="account-btn" class="icon-btn" title="Profile">👤</button>
         </div>
       </header>
 
-      <div class="nav-row">
-        <div></div>
-        <div class="nav-center">
-          <button id="prev-btn">‹</button>
-          <span class="period-label" id="period-label"></span>
-          <button id="next-btn">›</button>
-        </div>
-        <div></div>
-      </div>
-
-      <main class="star-jar-main">
-        <div class="jar-container">
-          <div class="jar">
-            <div class="jar-lid"></div>
-            <div class="jar-body">
-              <div class="jar-stars" id="jar-stars"></div>
+      <main class="rewards-main">
+        <p class="rewards-intro">Set up rewards for yourself when you complete your goals!</p>
+        
+        <!-- Weekly Rewards Section -->
+        <section class="rewards-section">
+          <div class="rewards-header">
+            <div class="rewards-title">
+              <span class="rewards-icon">📅</span>
+              <h2>Weekly Win Rewards</h2>
             </div>
+            <button id="add-weekly-reward" class="add-reward-btn">+</button>
           </div>
-          <p class="jar-count"><span id="star-count">0</span> star moments this month</p>
-        </div>
+          <p class="rewards-description">Choose a reward each time you complete a weekly goal</p>
+          <div id="weekly-rewards-list" class="rewards-list">
+            <!-- Rewards will be rendered here -->
+          </div>
+        </section>
 
-        <section class="star-moments-section">
-          <h2>Your Star Moments</h2>
-          <div id="star-moments-list" class="star-moments-list">
-            <p class="empty-message">No star moments this month yet. Add some on the Daily Wins page!</p>
+        <!-- Monthly Rewards Section -->
+        <section class="rewards-section">
+          <div class="rewards-header">
+            <div class="rewards-title">
+              <span class="rewards-icon">📆</span>
+              <h2>Monthly Win Rewards</h2>
+            </div>
+            <button id="add-monthly-reward" class="add-reward-btn">+</button>
+          </div>
+          <p class="rewards-description">Bigger rewards for completing monthly goals</p>
+          <div id="monthly-rewards-list" class="rewards-list">
+            <!-- Rewards will be rendered here -->
           </div>
         </section>
       </main>
@@ -67,8 +72,8 @@
         </div>
         <ul class="nav-links">
           <li><a href="index.html" class="nav-link"><span class="nav-icon">🏆</span> Daily Wins</a></li>
-          <li><a href="star-jar.html" class="nav-link active"><span class="nav-icon">⭐</span> Star Jar</a></li>
-          <li><a href="rewards.html" class="nav-link"><span class="nav-icon">🎁</span> Rewards</a></li>
+          <li><a href="star-jar.html" class="nav-link"><span class="nav-icon">⭐</span> Star Jar</a></li>
+          <li><a href="rewards.html" class="nav-link active"><span class="nav-icon">🎁</span> Rewards</a></li>
         </ul>
         <div class="nav-footer">
           <p>Track your wins!</p>
@@ -76,11 +81,46 @@
       </div>
     </nav>
 
-    <!-- Account Modal -->
+    <!-- Add/Edit Reward Modal -->
+    <div id="reward-modal" class="modal hidden">
+      <div class="modal-backdrop"></div>
+      <div class="modal-content">
+        <h3 id="reward-modal-title">Add Reward</h3>
+        
+        <div class="reward-type-toggle">
+          <button class="reward-type-btn active" data-type="money">💵 Money</button>
+          <button class="reward-type-btn" data-type="custom">✏️ Custom</button>
+        </div>
+        
+        <div id="money-input-group" class="form-group">
+          <label>Amount ($)</label>
+          <input type="number" id="reward-amount" placeholder="e.g. 10" min="0" step="0.01" />
+        </div>
+        
+        <div id="custom-input-group" class="form-group hidden">
+          <label>Reward Description</label>
+          <input type="text" id="reward-custom" placeholder="e.g. Watch a movie, Get ice cream" />
+        </div>
+        
+        <div class="form-group">
+          <label>Emoji (optional)</label>
+          <input type="text" id="reward-emoji" placeholder="e.g. 🍕 🎬 🛍️" maxlength="2" />
+        </div>
+        
+        <p id="reward-error" class="error-text hidden"></p>
+        
+        <div class="modal-actions">
+          <button id="reward-cancel" class="secondary">Cancel</button>
+          <button id="reward-delete" class="danger-btn hidden">Delete</button>
+          <button id="reward-save">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Account Modal (same as other pages) -->
     <div id="account-modal" class="modal hidden">
       <div class="modal-backdrop"></div>
       <div class="modal-content account-modal-content">
-        <!-- Login/Register View -->
         <div id="auth-view">
           <h3 id="auth-title">Login</h3>
           <div class="form-group">
@@ -103,7 +143,6 @@
           </div>
         </div>
         
-        <!-- Profile View (when logged in) -->
         <div id="profile-view" class="hidden">
           <div class="profile-header">
             <div class="avatar-container" id="avatar-container">
@@ -144,7 +183,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="star-jar.js"></script>
+    <script src="rewards.js"></script>
   </body>
 </html>
 

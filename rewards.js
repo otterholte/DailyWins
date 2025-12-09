@@ -1,0 +1,584 @@
+const STORAGE_KEY = "daily-wins-v3";
+
+// Supabase Configuration
+const SUPABASE_URL = 'https://viwyvwopdrxfzvkxboyn.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpd3l2d29wZHJ4Znp2a3hib3luIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxNzIzOTEsImV4cCI6MjA4MDc0ODM5MX0.uksKQ_bbcMhqN1BhaTp75xyo6Y4pNJi6RRsmu7osvyg';
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Default rewards
+const defaultWeeklyRewards = [
+  { id: "w1", type: "money", amount: 5, emoji: "☕" },
+  { id: "w2", type: "money", amount: 10, emoji: "🍕" },
+  { id: "w3", type: "custom", text: "Watch a movie", emoji: "🎬" },
+];
+
+const defaultMonthlyRewards = [
+  { id: "m1", type: "money", amount: 25, emoji: "🛍️" },
+  { id: "m2", type: "money", amount: 50, emoji: "💰" },
+  { id: "m3", type: "custom", text: "Nice dinner out", emoji: "🍽️" },
+  { id: "m4", type: "custom", text: "Buy something special", emoji: "🎁" },
+];
+
+const state = {
+  weeklyRewards: [...defaultWeeklyRewards],
+  monthlyRewards: [...defaultMonthlyRewards],
+  account: null,
+};
+
+let editingReward = null;
+let editingCategory = null;
+
+init();
+
+async function init() {
+  loadLocalState();
+  bindControls();
+  await bindAccount();
+  render();
+}
+
+function loadLocalState() {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) {
+    const parsed = JSON.parse(saved);
+    if (parsed.weeklyRewards) state.weeklyRewards = parsed.weeklyRewards;
+    if (parsed.monthlyRewards) state.monthlyRewards = parsed.monthlyRewards;
+  }
+}
+
+function saveState() {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  const data = saved ? JSON.parse(saved) : {};
+  data.weeklyRewards = state.weeklyRewards;
+  data.monthlyRewards = state.monthlyRewards;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  
+  if (state.account) {
+    syncToServer();
+  }
+}
+
+async function syncToServer() {
+  if (!state.account) return;
+  try {
+    await supabase
+      .from('profiles')
+      .update({
+        weekly_rewards: state.weeklyRewards,
+        monthly_rewards: state.monthlyRewards,
+      })
+      .eq('id', state.account.id);
+  } catch (err) {
+    console.error("Sync failed:", err);
+  }
+}
+
+function bindControls() {
+  // Navigation
+  document.getElementById("menu-btn").addEventListener("click", openNav);
+  document.querySelector(".nav-drawer-backdrop").addEventListener("click", closeNav);
+  
+  // Add reward buttons
+  document.getElementById("add-weekly-reward").addEventListener("click", () => openRewardModal(null, "weekly"));
+  document.getElementById("add-monthly-reward").addEventListener("click", () => openRewardModal(null, "monthly"));
+  
+  // Modal controls
+  document.getElementById("reward-cancel").addEventListener("click", closeRewardModal);
+  document.getElementById("reward-save").addEventListener("click", saveReward);
+  document.getElementById("reward-delete").addEventListener("click", deleteReward);
+  document.querySelector("#reward-modal .modal-backdrop").addEventListener("click", closeRewardModal);
+  
+  // Reward type toggle
+  document.querySelectorAll(".reward-type-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".reward-type-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      
+      const type = btn.dataset.type;
+      document.getElementById("money-input-group").classList.toggle("hidden", type !== "money");
+      document.getElementById("custom-input-group").classList.toggle("hidden", type !== "custom");
+    });
+  });
+}
+
+function openNav() {
+  document.getElementById("nav-drawer").classList.remove("hidden");
+}
+
+function closeNav() {
+  document.getElementById("nav-drawer").classList.add("hidden");
+}
+
+function render() {
+  renderRewardsList("weekly", state.weeklyRewards);
+  renderRewardsList("monthly", state.monthlyRewards);
+}
+
+function renderRewardsList(category, rewards) {
+  const listEl = document.getElementById(`${category}-rewards-list`);
+  
+  if (rewards.length === 0) {
+    listEl.innerHTML = `<p class="empty-rewards">No rewards yet. Add some!</p>`;
+    return;
+  }
+  
+  listEl.innerHTML = rewards.map(reward => `
+    <div class="reward-card" data-id="${reward.id}">
+      <div class="reward-emoji">${reward.emoji || "🎁"}</div>
+      <div class="reward-text">${formatReward(reward)}</div>
+      <button class="reward-edit-btn" onclick="openRewardModal('${reward.id}', '${category}')">✎</button>
+    </div>
+  `).join("");
+}
+
+function formatReward(reward) {
+  if (reward.type === "money") {
+    return `$${reward.amount} spending money`;
+  }
+  return reward.text;
+}
+
+function openRewardModal(rewardId, category) {
+  editingCategory = category;
+  const modal = document.getElementById("reward-modal");
+  const title = document.getElementById("reward-modal-title");
+  const deleteBtn = document.getElementById("reward-delete");
+  
+  // Reset form
+  document.getElementById("reward-amount").value = "";
+  document.getElementById("reward-custom").value = "";
+  document.getElementById("reward-emoji").value = "";
+  document.getElementById("reward-error").classList.add("hidden");
+  
+  // Set type toggle to money by default
+  document.querySelectorAll(".reward-type-btn").forEach(b => b.classList.remove("active"));
+  document.querySelector('.reward-type-btn[data-type="money"]').classList.add("active");
+  document.getElementById("money-input-group").classList.remove("hidden");
+  document.getElementById("custom-input-group").classList.add("hidden");
+  
+  if (rewardId) {
+    // Editing existing reward
+    const rewards = category === "weekly" ? state.weeklyRewards : state.monthlyRewards;
+    editingReward = rewards.find(r => r.id === rewardId);
+    
+    if (editingReward) {
+      title.textContent = "Edit Reward";
+      deleteBtn.classList.remove("hidden");
+      
+      if (editingReward.type === "money") {
+        document.getElementById("reward-amount").value = editingReward.amount;
+      } else {
+        document.querySelectorAll(".reward-type-btn").forEach(b => b.classList.remove("active"));
+        document.querySelector('.reward-type-btn[data-type="custom"]').classList.add("active");
+        document.getElementById("money-input-group").classList.add("hidden");
+        document.getElementById("custom-input-group").classList.remove("hidden");
+        document.getElementById("reward-custom").value = editingReward.text || "";
+      }
+      document.getElementById("reward-emoji").value = editingReward.emoji || "";
+    }
+  } else {
+    // Adding new reward
+    editingReward = null;
+    title.textContent = "Add Reward";
+    deleteBtn.classList.add("hidden");
+  }
+  
+  modal.classList.remove("hidden");
+}
+
+function closeRewardModal() {
+  document.getElementById("reward-modal").classList.add("hidden");
+  editingReward = null;
+  editingCategory = null;
+}
+
+function saveReward() {
+  const isMoneyType = document.querySelector('.reward-type-btn[data-type="money"]').classList.contains("active");
+  const emoji = document.getElementById("reward-emoji").value.trim() || "🎁";
+  
+  let reward;
+  
+  if (isMoneyType) {
+    const amount = parseFloat(document.getElementById("reward-amount").value);
+    if (!amount || amount <= 0) {
+      showRewardError("Please enter a valid amount");
+      return;
+    }
+    reward = { type: "money", amount, emoji };
+  } else {
+    const text = document.getElementById("reward-custom").value.trim();
+    if (!text) {
+      showRewardError("Please enter a reward description");
+      return;
+    }
+    reward = { type: "custom", text, emoji };
+  }
+  
+  const rewards = editingCategory === "weekly" ? state.weeklyRewards : state.monthlyRewards;
+  
+  if (editingReward) {
+    // Update existing
+    reward.id = editingReward.id;
+    const index = rewards.findIndex(r => r.id === editingReward.id);
+    if (index !== -1) {
+      rewards[index] = reward;
+    }
+  } else {
+    // Add new
+    reward.id = generateId();
+    rewards.push(reward);
+  }
+  
+  saveState();
+  closeRewardModal();
+  render();
+}
+
+function deleteReward() {
+  if (!editingReward || !editingCategory) return;
+  
+  if (!confirm("Delete this reward?")) return;
+  
+  const rewards = editingCategory === "weekly" ? state.weeklyRewards : state.monthlyRewards;
+  const index = rewards.findIndex(r => r.id === editingReward.id);
+  if (index !== -1) {
+    rewards.splice(index, 1);
+  }
+  
+  saveState();
+  closeRewardModal();
+  render();
+}
+
+function showRewardError(message) {
+  const el = document.getElementById("reward-error");
+  el.textContent = message;
+  el.classList.remove("hidden");
+}
+
+function generateId() {
+  return Math.random().toString(36).substr(2, 9);
+}
+
+// ============ Account Functions (same as other pages) ============
+
+async function bindAccount() {
+  document.getElementById("account-btn").addEventListener("click", openAccount);
+  document.querySelector("#account-modal .modal-backdrop").addEventListener("click", closeAccountModal);
+  
+  document.getElementById("auth-cancel").addEventListener("click", closeAccountModal);
+  document.getElementById("auth-toggle").addEventListener("click", toggleAuthMode);
+  document.getElementById("auth-submit").addEventListener("click", submitAuth);
+  document.getElementById("auth-password").addEventListener("keypress", (e) => {
+    if (e.key === "Enter") submitAuth();
+  });
+  
+  document.getElementById("profile-close").addEventListener("click", closeAccountModal);
+  document.getElementById("profile-save").addEventListener("click", saveProfile);
+  document.getElementById("profile-logout").addEventListener("click", logout);
+  document.getElementById("profile-image").addEventListener("change", uploadAvatar);
+  document.getElementById("change-password-btn").addEventListener("click", changePassword);
+  
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session) {
+    await loadUserProfile(session.user);
+  }
+  
+  supabase.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_IN' && session) {
+      await loadUserProfile(session.user);
+    } else if (event === 'SIGNED_OUT') {
+      state.account = null;
+      updateAccountButton();
+      render();
+    }
+  });
+}
+
+async function loadUserProfile(user) {
+  try {
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+    
+    if (error) {
+      console.error("Failed to load profile:", error);
+      return;
+    }
+    
+    state.account = {
+      id: user.id,
+      email: user.email,
+      username: profile.username || user.email,
+      name: profile.name || user.email.split('@')[0],
+      avatar: profile.avatar_url,
+    };
+    
+    if (profile.weekly_rewards) state.weeklyRewards = profile.weekly_rewards;
+    if (profile.monthly_rewards) state.monthlyRewards = profile.monthly_rewards;
+    
+    updateAccountButton();
+    render();
+    
+  } catch (err) {
+    console.error("Failed to load profile:", err);
+  }
+}
+
+let isRegistering = false;
+
+function openAccount() {
+  document.getElementById("account-modal").classList.remove("hidden");
+  if (state.account) {
+    showProfileView();
+  } else {
+    showAuthView();
+  }
+}
+
+function closeAccountModal() {
+  document.getElementById("account-modal").classList.add("hidden");
+}
+
+function showAuthView() {
+  document.getElementById("auth-view").classList.remove("hidden");
+  document.getElementById("profile-view").classList.add("hidden");
+  isRegistering = false;
+  updateAuthUI();
+}
+
+function showProfileView() {
+  document.getElementById("auth-view").classList.add("hidden");
+  document.getElementById("profile-view").classList.remove("hidden");
+  
+  if (state.account) {
+    document.getElementById("profile-display-name").textContent = state.account.name;
+    document.getElementById("profile-username").textContent = state.account.email || state.account.username;
+    document.getElementById("profile-name").value = state.account.name;
+    
+    const preview = document.getElementById("avatar-preview");
+    if (state.account.avatar) {
+      preview.innerHTML = `<img src="${state.account.avatar}" alt="Avatar">`;
+    } else {
+      preview.innerHTML = "👤";
+    }
+  }
+}
+
+function toggleAuthMode() {
+  isRegistering = !isRegistering;
+  updateAuthUI();
+}
+
+function updateAuthUI() {
+  const title = document.getElementById("auth-title");
+  const submit = document.getElementById("auth-submit");
+  const toggle = document.getElementById("auth-toggle");
+  const nameGroup = document.getElementById("auth-name-group");
+  
+  if (isRegistering) {
+    title.textContent = "Create Account";
+    submit.textContent = "Register";
+    toggle.textContent = "Already have an account?";
+    nameGroup.classList.remove("hidden");
+  } else {
+    title.textContent = "Login";
+    submit.textContent = "Login";
+    toggle.textContent = "Create Account";
+    nameGroup.classList.add("hidden");
+  }
+}
+
+async function submitAuth() {
+  const email = document.getElementById("auth-username").value.trim();
+  const password = document.getElementById("auth-password").value;
+  const name = document.getElementById("auth-name").value.trim();
+  const submitBtn = document.getElementById("auth-submit");
+  
+  if (!email || !password) {
+    showAuthError("Please enter email and password");
+    return;
+  }
+  
+  const originalText = submitBtn.textContent;
+  submitBtn.textContent = "Loading...";
+  submitBtn.disabled = true;
+  
+  try {
+    if (isRegistering) {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { name: name || email.split('@')[0] } }
+      });
+      
+      if (error) {
+        showAuthError(error.message);
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
+        return;
+      }
+      
+      if (data.user) {
+        await supabase.from('profiles').update({ 
+          name: name || email.split('@')[0],
+          username: email 
+        }).eq('id', data.user.id);
+        
+        await loadUserProfile(data.user);
+        showProfileView();
+      }
+    } else {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      
+      if (error) {
+        showAuthError(error.message);
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
+        return;
+      }
+      
+      if (data.user) {
+        await loadUserProfile(data.user);
+        showProfileView();
+      }
+    }
+    
+    document.getElementById("auth-username").value = "";
+    document.getElementById("auth-password").value = "";
+    document.getElementById("auth-name").value = "";
+    
+    render();
+    
+  } catch (err) {
+    showAuthError("Something went wrong. Please try again.");
+    console.error(err);
+  } finally {
+    submitBtn.textContent = originalText;
+    submitBtn.disabled = false;
+  }
+}
+
+function showAuthError(message) {
+  const el = document.getElementById("auth-error");
+  el.textContent = message;
+  el.classList.remove("hidden");
+}
+
+function updateAccountButton() {
+  const btn = document.getElementById("account-btn");
+  if (state.account && state.account.avatar) {
+    btn.innerHTML = `<img src="${state.account.avatar}" alt="" class="account-avatar">`;
+  } else if (state.account) {
+    btn.textContent = state.account.name.charAt(0).toUpperCase();
+  } else {
+    btn.textContent = "👤";
+  }
+}
+
+async function saveProfile() {
+  if (!state.account) return;
+  
+  const name = document.getElementById("profile-name").value.trim();
+  if (!name) return;
+  
+  try {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ name })
+      .eq('id', state.account.id);
+    
+    if (error) {
+      console.error("Save failed:", error);
+      return;
+    }
+    
+    state.account.name = name;
+    showProfileView();
+    updateAccountButton();
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function uploadAvatar(e) {
+  if (!state.account || !e.target.files[0]) return;
+  
+  const file = e.target.files[0];
+  const fileExt = file.name.split('.').pop();
+  const fileName = `${state.account.id}-${Date.now()}.${fileExt}`;
+  
+  try {
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(fileName, file, { upsert: true });
+    
+    if (uploadError) {
+      console.log("Avatar upload skipped - storage not configured");
+      return;
+    }
+    
+    const { data: { publicUrl } } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(fileName);
+    
+    await supabase
+      .from('profiles')
+      .update({ avatar_url: publicUrl })
+      .eq('id', state.account.id);
+    
+    state.account.avatar = publicUrl;
+    showProfileView();
+    updateAccountButton();
+  } catch (err) {
+    console.error("Could not upload avatar:", err);
+  }
+}
+
+async function changePassword() {
+  if (!state.account) return;
+  
+  const newPass = document.getElementById("new-password").value;
+  
+  if (!newPass || newPass.length < 6) {
+    alert("Password must be at least 6 characters");
+    return;
+  }
+  
+  try {
+    const { error } = await supabase.auth.updateUser({ password: newPass });
+    
+    if (error) {
+      alert(error.message || "Failed to change password");
+      return;
+    }
+    
+    document.getElementById("current-password").value = "";
+    document.getElementById("new-password").value = "";
+    alert("Password changed!");
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function logout() {
+  await supabase.auth.signOut();
+  
+  state.account = null;
+  state.weeklyRewards = [...defaultWeeklyRewards];
+  state.monthlyRewards = [...defaultMonthlyRewards];
+  
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) {
+    const parsed = JSON.parse(saved);
+    if (parsed.weeklyRewards) state.weeklyRewards = parsed.weeklyRewards;
+    if (parsed.monthlyRewards) state.monthlyRewards = parsed.monthlyRewards;
+  }
+  
+  updateAccountButton();
+  closeAccountModal();
+  render();
+}
+
