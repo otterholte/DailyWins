@@ -113,26 +113,31 @@ async function checkBuddyViewing() {
   // Check if we have permission to view this buddy
   const { data: share, error } = await supabase
     .from("buddy_shares")
-    .select(`
-      can_edit,
-      owner:owner_id (id, name, username, avatar_url)
-    `)
+    .select("can_edit, owner_id")
     .eq("owner_id", buddyId)
     .eq("buddy_id", session.user.id)
     .single();
   
   if (error || !share) {
+    console.error("Permission check failed:", error);
     alert("You don't have permission to view this user's data");
     window.location.href = "index.html";
     return;
   }
   
+  // Fetch owner profile separately
+  const { data: ownerProfile } = await supabase
+    .from("profiles")
+    .select("id, name, username, avatar_url")
+    .eq("id", buddyId)
+    .single();
+  
   // Set up buddy viewing
   viewingBuddy = {
     id: buddyId,
-    name: share.owner?.name || share.owner?.username || "Unknown",
-    username: share.owner?.username,
-    avatar_url: share.owner?.avatar_url,
+    name: ownerProfile?.name || ownerProfile?.username || "Unknown",
+    username: ownerProfile?.username,
+    avatar_url: ownerProfile?.avatar_url,
     canEdit: share.can_edit
   };
   
