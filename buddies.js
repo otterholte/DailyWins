@@ -121,33 +121,41 @@ async function shareWithBuddy() {
   // Find user by email
   let buddyProfile = null;
   
+  console.log("Searching for buddy with email:", email);
+  
   // First try to find by email field
-  const { data: byEmail } = await supabase
+  const { data: byEmail, error: emailError } = await supabase
     .from("profiles")
     .select("id, name, username, email, avatar_url")
     .eq("email", email)
     .single();
   
+  console.log("Search by email result:", byEmail, "error:", emailError);
+  
   if (byEmail) {
     buddyProfile = byEmail;
   } else {
     // Try to find by username field (for backwards compatibility)
-    const { data: byUsername } = await supabase
+    const { data: byUsername, error: usernameError } = await supabase
       .from("profiles")
       .select("id, name, username, email, avatar_url")
       .eq("username", email)
       .single();
+    
+    console.log("Search by username result:", byUsername, "error:", usernameError);
     
     if (byUsername) {
       buddyProfile = byUsername;
     } else {
       // Try by just the username part
       const usernamePart = email.split("@")[0];
-      const { data: byUsernamePart } = await supabase
+      const { data: byUsernamePart, error: partError } = await supabase
         .from("profiles")
         .select("id, name, username, email, avatar_url")
         .eq("username", usernamePart)
         .single();
+      
+      console.log("Search by username part result:", byUsernamePart, "error:", partError);
       
       if (byUsernamePart) {
         buddyProfile = byUsernamePart;
@@ -156,7 +164,10 @@ async function shareWithBuddy() {
   }
   
   if (!buddyProfile) {
-    alert("User not found. Make sure they have an account and have logged in at least once.");
+    // Let's also fetch all profiles to debug
+    const { data: allProfiles } = await supabase.from("profiles").select("id, email, username, name");
+    console.log("All profiles in database:", allProfiles);
+    alert("User not found. Check browser console for debug info. Make sure the buddy has logged in at least once to sync their email.");
     return;
   }
   
