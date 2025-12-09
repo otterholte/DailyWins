@@ -149,63 +149,42 @@ async function checkBuddyViewing() {
 }
 
 async function loadBuddyData(buddyId) {
-  // Load buddy's completions
-  const { data: completions } = await supabase
-    .from("completions")
+  // Load buddy's profile which contains their data
+  const { data: profile, error } = await supabase
+    .from("profiles")
     .select("*")
-    .eq("user_id", buddyId);
+    .eq("id", buddyId)
+    .single();
   
-  if (completions) {
-    state.completions = {};
-    completions.forEach(c => {
-      if (!state.completions[c.date_key]) {
-        state.completions[c.date_key] = [];
-      }
-      state.completions[c.date_key].push({
-        id: c.id,
-        taskId: c.task_id,
-        category: c.category,
-        color: c.color,
-        label: c.label,
-        at: c.created_at,
-        isLinked: c.is_linked
-      });
-    });
+  if (error) {
+    console.error("Failed to load buddy data:", error);
+    return;
   }
   
-  // Load buddy's custom tasks
-  const { data: customTasks } = await supabase
-    .from("tasks")
-    .select("*")
-    .eq("user_id", buddyId);
+  // Load completions from profile
+  if (profile.completions) {
+    state.completions = profile.completions;
+  } else {
+    state.completions = {};
+  }
   
-  if (customTasks && customTasks.length > 0) {
-    tasks = customTasks.map(t => ({
-      id: t.task_id,
-      label: t.label,
-      category: t.category,
-      color: t.color,
-      goal: t.goal,
-      linkedTo: t.linked_to || []
-    }));
+  // Load custom tasks from profile
+  if (profile.tasks && profile.tasks.length > 0) {
+    tasks = profile.tasks;
+    state.customTasks = profile.tasks;
   } else {
     tasks = [...defaultTasks];
+    state.customTasks = null;
   }
   
-  // Load buddy's star moments
-  const { data: starMoments } = await supabase
-    .from("star_moments")
-    .select("*")
-    .eq("user_id", buddyId);
-  
-  if (starMoments) {
-    state.starMoments = starMoments.map(s => ({
-      id: s.id,
-      date: s.date,
-      message: s.message,
-      taskId: s.task_id
-    }));
+  // Load star moments from profile
+  if (profile.star_moments) {
+    state.starMoments = profile.star_moments;
+  } else {
+    state.starMoments = [];
   }
+  
+  console.log("Loaded buddy data:", { completions: state.completions, tasks: tasks.length, starMoments: state.starMoments.length });
 }
 
 function showBuddyBanner() {
