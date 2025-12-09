@@ -1359,6 +1359,34 @@ button.danger {
   margin-top: 4px;
 }
 
+.link-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.expand-btn {
+  background: none;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  color: var(--muted);
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.expand-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text);
+}
+
+.expand-btn.expanded {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
 .link-options {
   display: flex;
   flex-direction: column;
@@ -1369,6 +1397,11 @@ button.danger {
   background: rgba(0, 0, 0, 0.02);
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 8px;
+  transition: max-height 0.25s ease;
+}
+
+.link-options.expanded {
+  max-height: 300px;
 }
 
 .link-option {

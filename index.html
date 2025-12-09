@@ -150,13 +150,15 @@
           <small class="form-hint">Leave empty for tasks with no progress bar</small>
         </div>
         <div class="form-group" id="link-group">
-          <label>Link to Goals</label>
+          <div class="link-header">
+            <label>Link to Goals</label>
+            <button type="button" id="expand-links-btn" class="expand-btn">Expand ↓</button>
+          </div>
           <p class="form-hint">When you complete this task, it will also count toward these goals:</p>
           <div id="link-options" class="link-options"></div>
         </div>
         <div class="modal-actions">
           <button id="edit-cancel" class="secondary">Cancel</button>
-          <button id="edit-delete" class="danger-btn">Delete</button>
           <button id="edit-save">Save</button>
         </div>
       </div>

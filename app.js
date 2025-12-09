@@ -524,17 +524,14 @@ function bindModals() {
   // Edit modal
   document.getElementById("edit-cancel").addEventListener("click", closeEditModal);
   document.getElementById("edit-save").addEventListener("click", saveTask);
-  document.getElementById("edit-delete").addEventListener("click", () => {
-    if (editingTask && editingTask.id) {
-      showConfirm(
-        `Delete "${editingTask.label}"?`,
-        "This task will be removed. Any stickers you've added for it will remain in your history.",
-        () => {
-          deleteTask(editingTask.id);
-          closeEditModal();
-        }
-      );
-    }
+  
+  // Expand link options button
+  document.getElementById("expand-links-btn").addEventListener("click", () => {
+    const btn = document.getElementById("expand-links-btn");
+    const linkOptions = document.getElementById("link-options");
+    const isExpanded = linkOptions.classList.toggle("expanded");
+    btn.classList.toggle("expanded", isExpanded);
+    btn.textContent = isExpanded ? "Collapse ↑" : "Expand ↓";
   });
   document.querySelector("#edit-modal .modal-backdrop").addEventListener("click", closeEditModal);
 
@@ -575,7 +572,11 @@ function openEditModal(task, category) {
   
   document.getElementById("edit-title").textContent = task ? "Edit Task" : "Add Task";
   document.getElementById("edit-label").value = editingTask.label;
-  document.getElementById("edit-delete").style.display = task ? "block" : "none";
+  
+  // Reset expand state when opening modal
+  document.getElementById("link-options").classList.remove("expanded");
+  document.getElementById("expand-links-btn").classList.remove("expanded");
+  document.getElementById("expand-links-btn").textContent = "Expand ↓";
   
   // Show/hide goal input based on category
   const goalGroup = document.getElementById("goal-group");
