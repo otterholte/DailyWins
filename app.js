@@ -450,13 +450,15 @@ async function submitAuth() {
       }
     } else {
       // Sign in with Supabase
+      console.log("Attempting login with email:", email);
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
       
       if (error) {
-        showAuthError(error.message);
+        console.error("Login error:", error);
+        showAuthError(error.message + ` (tried: ${email})`);
         submitBtn.textContent = originalText;
         submitBtn.disabled = false;
         return;
