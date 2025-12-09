@@ -65,6 +65,9 @@ const state = {
   starMoments: [], // star jar moments
 };
 
+// Buddy viewing state
+let viewingBuddy = null; // { id, name, username, avatar_url, canEdit }
+
 // Modal state
 let pendingConfirm = null;
 let editingTask = null;
@@ -76,13 +79,164 @@ let pendingStarMoment = null; // { date, taskId }
 loadState();
 init();
 
-function init() {
+async function init() {
   bindControls();
   bindModals();
   bindAccount();
   bindNavigation();
   bindStarModal();
+  
+  // Check if viewing a buddy's data
+  await checkBuddyViewing();
+  
   render();
+}
+
+// Check URL for buddy parameter and load their data
+async function checkBuddyViewing() {
+  const params = new URLSearchParams(window.location.search);
+  const buddyId = params.get('buddy');
+  
+  if (!buddyId) {
+    removeBuddyBanner();
+    return;
+  }
+  
+  // Get current user
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    alert("You must be logged in to view a buddy's data");
+    window.location.href = "index.html";
+    return;
+  }
+  
+  // Check if we have permission to view this buddy
+  const { data: share, error } = await supabase
+    .from("buddy_shares")
+    .select(`
+      can_edit,
+      owner:owner_id (id, name, username, avatar_url)
+    `)
+    .eq("owner_id", buddyId)
+    .eq("buddy_id", session.user.id)
+    .single();
+  
+  if (error || !share) {
+    alert("You don't have permission to view this user's data");
+    window.location.href = "index.html";
+    return;
+  }
+  
+  // Set up buddy viewing
+  viewingBuddy = {
+    id: buddyId,
+    name: share.owner?.name || share.owner?.username || "Unknown",
+    username: share.owner?.username,
+    avatar_url: share.owner?.avatar_url,
+    canEdit: share.can_edit
+  };
+  
+  // Load buddy's data
+  await loadBuddyData(buddyId);
+  
+  // Show banner
+  showBuddyBanner();
+}
+
+async function loadBuddyData(buddyId) {
+  // Load buddy's completions
+  const { data: completions } = await supabase
+    .from("completions")
+    .select("*")
+    .eq("user_id", buddyId);
+  
+  if (completions) {
+    state.completions = {};
+    completions.forEach(c => {
+      if (!state.completions[c.date_key]) {
+        state.completions[c.date_key] = [];
+      }
+      state.completions[c.date_key].push({
+        id: c.id,
+        taskId: c.task_id,
+        category: c.category,
+        color: c.color,
+        label: c.label,
+        at: c.created_at,
+        isLinked: c.is_linked
+      });
+    });
+  }
+  
+  // Load buddy's custom tasks
+  const { data: customTasks } = await supabase
+    .from("tasks")
+    .select("*")
+    .eq("user_id", buddyId);
+  
+  if (customTasks && customTasks.length > 0) {
+    tasks = customTasks.map(t => ({
+      id: t.task_id,
+      label: t.label,
+      category: t.category,
+      color: t.color,
+      goal: t.goal,
+      linkedTo: t.linked_to || []
+    }));
+  } else {
+    tasks = [...defaultTasks];
+  }
+  
+  // Load buddy's star moments
+  const { data: starMoments } = await supabase
+    .from("star_moments")
+    .select("*")
+    .eq("user_id", buddyId);
+  
+  if (starMoments) {
+    state.starMoments = starMoments.map(s => ({
+      id: s.id,
+      date: s.date,
+      message: s.message,
+      taskId: s.task_id
+    }));
+  }
+}
+
+function showBuddyBanner() {
+  // Remove existing banner if any
+  removeBuddyBanner();
+  
+  const banner = document.createElement("div");
+  banner.id = "buddy-viewing-banner";
+  banner.className = "buddy-viewing-banner";
+  banner.innerHTML = `
+    <div class="buddy-viewing-info">
+      <div class="buddy-viewing-avatar">${viewingBuddy.avatar_url ? `<img src="${viewingBuddy.avatar_url}" alt="">` : '👤'}</div>
+      <div class="buddy-viewing-text">Viewing <strong>${viewingBuddy.name}</strong>'s data ${viewingBuddy.canEdit ? '(Can Edit)' : '(View Only)'}</div>
+    </div>
+    <button class="buddy-viewing-close" onclick="exitBuddyView()">Exit</button>
+  `;
+  
+  const app = document.querySelector(".app");
+  app.insertBefore(banner, app.firstChild.nextSibling);
+}
+
+function removeBuddyBanner() {
+  const existing = document.getElementById("buddy-viewing-banner");
+  if (existing) existing.remove();
+}
+
+function exitBuddyView() {
+  window.location.href = "index.html";
+}
+
+function isViewingBuddy() {
+  return viewingBuddy !== null;
+}
+
+function canEditBuddyData() {
+  return viewingBuddy && viewingBuddy.canEdit;
 }
 
 function bindNavigation() {
@@ -567,6 +721,11 @@ function closeConfirmModal() {
 }
 
 function openEditModal(task, category) {
+  if (isViewingBuddy() && !canEditBuddyData()) {
+    alert("You can only view this buddy's data, not edit it.");
+    return;
+  }
+  
   editingTask = task ? { ...task } : { id: null, label: "", color: colorPalette[0], category, linkedTo: [] };
   if (!editingTask.linkedTo) editingTask.linkedTo = [];
   
@@ -1799,6 +1958,12 @@ function renderSelectedDateLabel() {
 }
 
 function addWin(task) {
+  // Check if we can edit
+  if (isViewingBuddy() && !canEditBuddyData()) {
+    alert("You can only view this buddy's data, not edit it.");
+    return;
+  }
+  
   const key = toKey(state.selectedDate);
   if (!state.completions[key]) state.completions[key] = [];
 
@@ -1859,6 +2024,10 @@ function countDailyWins(dateKey) {
 }
 
 function removeWin(dateKey, id) {
+  if (isViewingBuddy() && !canEditBuddyData()) {
+    alert("You can only view this buddy's data, not edit it.");
+    return;
+  }
   const items = state.completions[dateKey] || [];
   state.completions[dateKey] = items.filter((i) => i.id !== id);
   saveState();
@@ -1866,6 +2035,10 @@ function removeWin(dateKey, id) {
 }
 
 function removeWinForTask(taskId) {
+  if (isViewingBuddy() && !canEditBuddyData()) {
+    alert("You can only view this buddy's data, not edit it.");
+    return;
+  }
   const key = toKey(state.selectedDate);
   const items = state.completions[key] || [];
   const idx = items.map((i) => i.taskId).lastIndexOf(taskId);

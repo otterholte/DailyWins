@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Accountability Buddies - Daily Wins</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icons/icon-192.png" sizes="192x192" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+</head>
+<body class="light">
+  <div class="app">
+    <header class="top-bar">
+      <div class="nav-toggle">
+        <button id="menu-btn" class="icon-btn">☰</button>
+      </div>
+      <div class="logo">
+        <span class="logo-icon">👥</span>
+        <h1>Accountability Buddies</h1>
+      </div>
+      <div class="top-actions header-actions">
+        <button id="account-btn" class="account-btn">👤</button>
+      </div>
+    </header>
+
+    <!-- Navigation Drawer -->
+    <nav id="nav-drawer" class="nav-drawer hidden">
+      <div class="nav-drawer-backdrop"></div>
+      <div class="nav-drawer-content">
+        <a href="index.html" class="nav-item">★ Daily Wins</a>
+        <a href="star-jar.html" class="nav-item">⭐ Star Jar</a>
+        <a href="rewards.html" class="nav-item">🎁 Rewards</a>
+        <a href="buddies.html" class="nav-item active">👥 Buddies</a>
+      </div>
+    </nav>
+
+    <main class="buddies-container">
+      <!-- Login prompt for non-logged in users -->
+      <div id="login-prompt" class="login-prompt hidden">
+        <div class="login-prompt-card">
+          <span class="login-prompt-icon">🔒</span>
+          <h3>Login Required</h3>
+          <p>You need to be logged in to use Accountability Buddies.</p>
+          <button id="login-prompt-btn" class="primary-btn">Login / Register</button>
+        </div>
+      </div>
+
+      <!-- Main content for logged in users -->
+      <div id="buddies-content" class="buddies-content hidden">
+        
+        <!-- Share Your Account Section -->
+        <section class="buddies-section">
+          <h2>📤 Share Your Account</h2>
+          <p class="section-hint">Let others view your progress. They'll see your Daily Wins, Star Jar, and Rewards.</p>
+          
+          <div class="share-form">
+            <input type="text" id="share-username" placeholder="Enter buddy's username" />
+            <button id="share-btn" class="primary-btn">Share</button>
+          </div>
+          
+          <div class="share-settings">
+            <label class="checkbox-label">
+              <input type="checkbox" id="allow-edit-default" />
+              <span>Allow buddies to edit my data by default</span>
+            </label>
+          </div>
+
+          <div id="shared-with-list" class="shared-list">
+            <h4>People who can view your account:</h4>
+            <div id="shared-with-items" class="shared-items">
+              <p class="empty-state">You haven't shared with anyone yet</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Buddies You Follow Section -->
+        <section class="buddies-section">
+          <h2>👀 Buddies You Follow</h2>
+          <p class="section-hint">View the progress of people who've shared their account with you.</p>
+          
+          <div id="buddies-list" class="buddies-list">
+            <p class="empty-state">No one has shared their account with you yet</p>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <!-- Account Modal -->
+  <div id="account-modal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content account-modal-content">
+      <div id="auth-view">
+        <h3 id="auth-title">Login</h3>
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" id="auth-username" />
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="auth-password" />
+        </div>
+        <div class="modal-actions">
+          <button id="auth-cancel" class="secondary">Cancel</button>
+          <button id="auth-submit" class="primary-btn">Login</button>
+        </div>
+        <p class="auth-toggle">
+          <span id="auth-toggle-text">Don't have an account?</span>
+          <button id="auth-toggle-btn" class="link-btn">Register</button>
+        </p>
+      </div>
+      <div id="profile-view" class="hidden">
+        <h3>Profile</h3>
+        <div class="profile-header">
+          <div class="avatar-upload">
+            <div id="profile-avatar" class="avatar-preview">👤</div>
+            <input type="file" id="avatar-input" accept="image/*" hidden />
+            <button id="upload-avatar-btn" class="secondary">Change Photo</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Display Name</label>
+          <input type="text" id="profile-name" />
+        </div>
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" id="profile-username" disabled />
+        </div>
+        <div class="modal-actions">
+          <button id="profile-cancel" class="secondary">Close</button>
+          <button id="profile-save">Save</button>
+        </div>
+        <hr style="margin: 16px 0; border: none; border-top: 1px solid rgba(0,0,0,0.1);" />
+        <button id="logout-btn" class="danger-btn" style="width: 100%;">Logout</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirm Modal -->
+  <div id="confirm-modal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <h3 id="confirm-title">Are you sure?</h3>
+      <p id="confirm-message"></p>
+      <div class="modal-actions">
+        <button id="confirm-cancel" class="secondary">Cancel</button>
+        <button id="confirm-ok" class="danger-btn">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="buddies.js"></script>
+</body>
+</html>
+

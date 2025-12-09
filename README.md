@@ -37,6 +37,7 @@ A beautiful, gamified habit tracker that celebrates your daily accomplishments w
 - **⭐ Star Moments**: Special achievements you can write notes about
 - **📊 Progress Bars**: Visual feedback showing how close you are to goals
 - **🎉 Animations**: Fun celebrations when you complete tasks!
+- **👥 Accountability Buddies**: Share your progress with friends and view theirs
 
 ---
 
@@ -66,11 +67,14 @@ A beautiful, gamified habit tracker that celebrates your daily accomplishments w
 DailyWins/
 ├── index.html      # Main page structure
 ├── star-jar.html   # Star moments page
+├── rewards.html    # Rewards management page
+├── buddies.html    # Accountability buddies page
 ├── style.css       # All the styling and animations
 ├── app.js          # Main app logic (tracking wins, progress, etc.)
 ├── star-jar.js     # Star jar page logic
-├── server.js       # Simple Express server
-├── package.json    # Project dependencies
+├── rewards.js      # Rewards page logic
+├── buddies.js      # Buddies page logic
+├── manifest.json   # PWA manifest for home screen
 └── icons/          # App icons for home screen
 ```
 
@@ -140,6 +144,43 @@ You can customize tasks through the app:
 2. Drag to reorder, ✏️ to edit, 🗑️ to delete
 3. Click ➕ to add new tasks
 4. Set goals and link related tasks together
+
+---
+
+## 🗄️ Supabase Setup (For Developers)
+
+If you're setting up your own instance, you'll need these Supabase tables:
+
+### buddy_shares table
+```sql
+CREATE TABLE buddy_shares (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  owner_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  buddy_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  can_edit BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(owner_id, buddy_id)
+);
+
+-- RLS Policies
+ALTER TABLE buddy_shares ENABLE ROW LEVEL SECURITY;
+
+-- Users can view shares they own or are buddies in
+CREATE POLICY "Users can view their shares" ON buddy_shares
+  FOR SELECT USING (auth.uid() = owner_id OR auth.uid() = buddy_id);
+
+-- Users can insert shares where they are the owner
+CREATE POLICY "Users can create shares" ON buddy_shares
+  FOR INSERT WITH CHECK (auth.uid() = owner_id);
+
+-- Users can update shares they own
+CREATE POLICY "Users can update their shares" ON buddy_shares
+  FOR UPDATE USING (auth.uid() = owner_id);
+
+-- Users can delete shares they own
+CREATE POLICY "Users can delete their shares" ON buddy_shares
+  FOR DELETE USING (auth.uid() = owner_id);
+```
 
 ---
 
