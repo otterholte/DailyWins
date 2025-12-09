@@ -156,6 +156,12 @@ function exitBuddyView() {
 }
 
 function loadLocalState() {
+  // Don't load localStorage when viewing a buddy - their data will be loaded separately
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('buddy')) {
+    return;
+  }
+  
   const saved = localStorage.getItem(STORAGE_KEY);
   if (saved) {
     const parsed = JSON.parse(saved);
@@ -168,6 +174,12 @@ function loadLocalState() {
 }
 
 function saveState() {
+  // Never save when viewing a buddy's data - would corrupt user's own data!
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('buddy')) {
+    return;
+  }
+  
   const saved = localStorage.getItem(STORAGE_KEY);
   const data = saved ? JSON.parse(saved) : {};
   data.weeklyRewards = state.weeklyRewards;
@@ -181,6 +193,12 @@ function saveState() {
 }
 
 async function syncToServer() {
+  // NEVER sync when viewing a buddy's data!
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('buddy')) {
+    return;
+  }
+  
   if (!state.account) return;
   try {
     await supabase
@@ -697,6 +715,17 @@ async function bindAccount() {
   
   supabase.auth.onAuthStateChange(async (event, session) => {
     if (event === 'SIGNED_IN' && session) {
+      // Check if we're viewing a buddy - if so, skip full profile load
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('buddy')) {
+        // Just update account info without loading profile data
+        state.account = {
+          id: session.user.id,
+          email: session.user.email,
+        };
+        updateAccountButton();
+        return;
+      }
       await loadUserProfile(session.user);
     } else if (event === 'SIGNED_OUT') {
       state.account = null;
@@ -727,8 +756,11 @@ async function loadUserProfile(user) {
       avatar: profile.avatar_url,
     };
     
-    // Only load user's content if NOT viewing a buddy
-    if (!viewingBuddy) {
+    // Only load user's content if NOT viewing a buddy (check URL param directly)
+    const params = new URLSearchParams(window.location.search);
+    const isViewingBuddy = params.get('buddy') !== null;
+    
+    if (!isViewingBuddy) {
       if (profile.weekly_rewards) state.weeklyRewards = profile.weekly_rewards;
       if (profile.monthly_rewards) state.monthlyRewards = profile.monthly_rewards;
       if (profile.completions) state.completions = profile.completions;

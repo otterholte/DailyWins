@@ -183,8 +183,6 @@ async function loadBuddyData(buddyId) {
   } else {
     state.starMoments = [];
   }
-  
-  console.log("Loaded buddy data:", { completions: state.completions, tasks: tasks.length, starMoments: state.starMoments.length });
 }
 
 function showBuddyBanner() {
@@ -297,6 +295,18 @@ async function bindAccount() {
   // Listen for auth changes
   supabase.auth.onAuthStateChange(async (event, session) => {
     if (event === 'SIGNED_IN' && session) {
+      // Check if we're viewing a buddy - if so, skip loading user profile
+      // to avoid overwriting buddy data
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('buddy')) {
+        // Just update account info without loading profile data
+        state.account = {
+          id: session.user.id,
+          email: session.user.email,
+        };
+        updateAccountButton();
+        return;
+      }
       await loadUserProfile(session.user);
     } else if (event === 'SIGNED_OUT') {
       state.account = null;
@@ -518,12 +528,17 @@ async function loadUserProfile(user) {
       starMoments: profile.star_moments || []
     };
     
-    state.completions = profile.completions || {};
-    state.starMoments = profile.star_moments || [];
+    // Only load user's content if NOT viewing a buddy (check URL param directly)
+    const params = new URLSearchParams(window.location.search);
     
-    if (profile.tasks) {
-      tasks = profile.tasks;
-      state.customTasks = profile.tasks;
+    if (!params.get('buddy')) {
+      state.completions = profile.completions || {};
+      state.starMoments = profile.star_moments || [];
+      
+      if (profile.tasks) {
+        tasks = profile.tasks;
+        state.customTasks = profile.tasks;
+      }
     }
     
     updateAccountButton();
@@ -2196,6 +2211,12 @@ function celebrate() {
 }
 
 function loadState() {
+  // Don't load localStorage when viewing a buddy - their data will be loaded separately
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('buddy')) {
+    return;
+  }
+  
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
     if (saved) {
@@ -2213,7 +2234,13 @@ function loadState() {
 }
 
 function saveState() {
-  // Always save locally
+  // Never save when viewing a buddy's data - would corrupt user's own data!
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('buddy')) {
+    return;
+  }
+  
+  // Save locally
   localStorage.setItem(
     STORAGE_KEY,
     JSON.stringify({
@@ -2233,6 +2260,12 @@ function saveState() {
 // Debounce server sync to avoid too many requests
 let syncTimeout = null;
 function syncToServer() {
+  // Never sync when viewing a buddy's data - would corrupt user's own data!
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('buddy')) {
+    return;
+  }
+  
   if (syncTimeout) clearTimeout(syncTimeout);
   syncTimeout = setTimeout(async () => {
     if (!state.account) return;
