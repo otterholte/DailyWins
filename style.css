@@ -390,7 +390,6 @@ button.danger {
 .progress-fill {
   height: 100%;
   border-radius: 4px;
-  transition: width 300ms ease;
 }
 
 .progress-card.weekly .progress-fill {
@@ -819,7 +818,6 @@ button.danger {
 .task-progress-fill {
   height: 100%;
   border-radius: 3px;
-  transition: width 300ms ease;
   position: relative;
 }
 
@@ -1083,7 +1081,6 @@ button.danger {
   background: linear-gradient(90deg, #ffd43b, #ff922b, #ff6b6b);
   background-size: 200% 100%;
   animation: gradient-flow 2s ease infinite;
-  transition: width 500ms ease;
   position: relative;
 }
 
