@@ -927,6 +927,337 @@ function moveTask(taskId, dir) {
   saveTasks();
 }
 
+// ===== SWIPE GESTURES FOR TASKS =====
+let swipeState = {
+  active: false,
+  container: null,
+  startX: 0,
+  startY: 0,
+  currentX: 0,
+  threshold: 60,
+  maxSwipe: 88,
+};
+
+let taskDragState = {
+  active: false,
+  container: null,
+  category: null,
+  clone: null,
+  placeholder: null,
+  startY: 0,
+  currentY: 0,
+  listEl: null,
+};
+
+function initSwipeHandlers(container, category) {
+  container.addEventListener("touchstart", handleSwipeStart, { passive: true });
+  container.addEventListener("touchmove", handleSwipeMove, { passive: false });
+  container.addEventListener("touchend", handleSwipeEnd);
+  
+  // Also support mouse for desktop
+  container.addEventListener("mousedown", handleSwipeStart);
+  
+  // Drag handle click
+  const dragHandle = container.querySelector(".drag-handle-btn");
+  dragHandle.addEventListener("touchstart", (e) => startTaskDrag(e, container, category), { passive: false });
+  dragHandle.addEventListener("mousedown", (e) => startTaskDrag(e, container, category));
+}
+
+function handleSwipeStart(e) {
+  // Don't start swipe if clicking on a button
+  if (e.target.closest("button")) return;
+  
+  const container = e.currentTarget;
+  const touch = e.touches ? e.touches[0] : e;
+  
+  swipeState.active = true;
+  swipeState.container = container;
+  swipeState.startX = touch.clientX;
+  swipeState.startY = touch.clientY;
+  swipeState.currentX = 0;
+  
+  container.classList.add("swiping");
+  
+  if (!e.touches) {
+    document.addEventListener("mousemove", handleSwipeMove);
+    document.addEventListener("mouseup", handleSwipeEnd);
+  }
+}
+
+function handleSwipeMove(e) {
+  if (!swipeState.active) return;
+  
+  const touch = e.touches ? e.touches[0] : e;
+  const deltaX = touch.clientX - swipeState.startX;
+  const deltaY = touch.clientY - swipeState.startY;
+  
+  // If vertical scroll is dominant, cancel swipe
+  if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 10) {
+    resetSwipeState(swipeState.container);
+    return;
+  }
+  
+  // Prevent page scroll during horizontal swipe
+  if (Math.abs(deltaX) > 10) {
+    e.preventDefault();
+  }
+  
+  swipeState.currentX = deltaX;
+  
+  const wasSwipedLeft = swipeState.container.classList.contains("swiped-left");
+  const wasSwipedRight = swipeState.container.classList.contains("swiped-right");
+  
+  const wrapper = swipeState.container.querySelector(".task-swipe-wrapper");
+  const leftActions = swipeState.container.querySelector(".task-actions-left");
+  const rightActions = swipeState.container.querySelector(".task-actions-right");
+  
+  // Handle swipe RIGHT (show drag handle) - content slides
+  if (deltaX > 0 || wasSwipedRight) {
+    let offset = deltaX;
+    if (wasSwipedRight) offset += 56;
+    offset = Math.max(0, Math.min(56, offset));
+    
+    wrapper.style.transform = `translateX(${offset}px)`;
+    leftActions.style.transform = `translateX(${offset - 56}px)`;
+    rightActions.style.width = "0";
+  }
+  // Handle swipe LEFT (show edit/delete) - content stays, buttons slide in
+  else if (deltaX < 0 || wasSwipedLeft) {
+    let revealWidth = -deltaX;
+    if (wasSwipedLeft) revealWidth += 120;
+    revealWidth = Math.max(0, Math.min(120, revealWidth));
+    
+    wrapper.style.transform = "";
+    leftActions.style.transform = "translateX(-100%)";
+    rightActions.style.width = `${revealWidth}px`;
+  }
+}
+
+function handleSwipeEnd(e) {
+  if (!swipeState.active) return;
+  
+  const container = swipeState.container;
+  container.classList.remove("swiping");
+  
+  // Reset inline styles - let CSS handle the transition
+  const wrapper = container.querySelector(".task-swipe-wrapper");
+  const leftActions = container.querySelector(".task-actions-left");
+  const rightActions = container.querySelector(".task-actions-right");
+  
+  wrapper.style.transform = "";
+  leftActions.style.transform = "";
+  rightActions.style.width = "";
+  
+  const deltaX = swipeState.currentX;
+  const wasSwipedLeft = container.classList.contains("swiped-left");
+  const wasSwipedRight = container.classList.contains("swiped-right");
+  
+  // Determine new state
+  if (wasSwipedLeft) {
+    if (deltaX > 40) {
+      // Swiping right to close
+      container.classList.remove("swiped-left");
+      closeOtherSwipes(null);
+    }
+  } else if (wasSwipedRight) {
+    if (deltaX < -40) {
+      // Swiping left to close
+      container.classList.remove("swiped-right");
+      closeOtherSwipes(null);
+    }
+  } else {
+    if (deltaX < -swipeState.threshold) {
+      // Swipe left to show edit/delete
+      closeOtherSwipes(container);
+      container.classList.add("swiped-left");
+    } else if (deltaX > swipeState.threshold) {
+      // Swipe right to show drag handle
+      closeOtherSwipes(container);
+      container.classList.add("swiped-right");
+    }
+  }
+  
+  swipeState.active = false;
+  swipeState.container = null;
+  
+  document.removeEventListener("mousemove", handleSwipeMove);
+  document.removeEventListener("mouseup", handleSwipeEnd);
+}
+
+function resetSwipeState(container) {
+  if (!container) return;
+  container.classList.remove("swiping", "swiped-left", "swiped-right");
+  const wrapper = container.querySelector(".task-swipe-wrapper");
+  const leftActions = container.querySelector(".task-actions-left");
+  const rightActions = container.querySelector(".task-actions-right");
+  if (wrapper) wrapper.style.transform = "";
+  if (leftActions) leftActions.style.transform = "";
+  if (rightActions) rightActions.style.width = "";
+}
+
+function closeOtherSwipes(exceptContainer) {
+  document.querySelectorAll(".task-swipe-container").forEach(c => {
+    if (c !== exceptContainer) {
+      resetSwipeState(c);
+    }
+  });
+}
+
+// ===== DRAG AND DROP FOR MAIN TASK LIST =====
+function startTaskDrag(e, container, category) {
+  e.preventDefault();
+  e.stopPropagation();
+  
+  const listEl = container.closest(".task-list");
+  const allContainers = Array.from(listEl.querySelectorAll(".task-swipe-container"));
+  const rect = container.getBoundingClientRect();
+  const listRect = listEl.getBoundingClientRect();
+  const touch = e.touches ? e.touches[0] : e;
+  
+  // Close swipe state first
+  resetSwipeState(container);
+  
+  // Create clone for dragging
+  const clone = container.cloneNode(true);
+  clone.classList.add("dragging-clone");
+  clone.style.position = "fixed";
+  clone.style.width = `${rect.width}px`;
+  clone.style.left = `${rect.left}px`;
+  clone.style.top = `${rect.top}px`;
+  document.body.appendChild(clone);
+  
+  // Mark original as being dragged
+  container.classList.add("dragging-original");
+  
+  // Create placeholder at original position
+  const placeholder = document.createElement("div");
+  placeholder.className = "task-drag-placeholder";
+  placeholder.style.height = `${rect.height}px`;
+  listEl.insertBefore(placeholder, container);
+  
+  const startIndex = allContainers.indexOf(container);
+  
+  taskDragState = {
+    active: true,
+    container,
+    category,
+    clone,
+    placeholder,
+    startY: touch.clientY,
+    offsetY: touch.clientY - rect.top,
+    listEl,
+    listRect,
+    startIndex,
+    currentIndex: startIndex,
+    itemHeight: rect.height,
+    items: allContainers.filter(c => c !== container),
+  };
+  
+  document.addEventListener("touchmove", moveTaskDrag, { passive: false });
+  document.addEventListener("touchend", endTaskDrag);
+  document.addEventListener("mousemove", moveTaskDrag);
+  document.addEventListener("mouseup", endTaskDrag);
+}
+
+function moveTaskDrag(e) {
+  if (!taskDragState.active) return;
+  e.preventDefault();
+  
+  const touch = e.touches ? e.touches[0] : e;
+  
+  // Move clone to follow cursor/finger
+  const newTop = touch.clientY - taskDragState.offsetY;
+  taskDragState.clone.style.top = `${newTop}px`;
+  
+  // Get all visible items (excluding the dragged one)
+  const items = Array.from(taskDragState.listEl.querySelectorAll(".task-swipe-container:not(.dragging-original)"));
+  
+  // Find where the placeholder should go based on cursor position
+  let newIndex = items.length; // Default to end
+  
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    const itemRect = item.getBoundingClientRect();
+    const itemMidY = itemRect.top + itemRect.height / 2;
+    
+    if (touch.clientY < itemMidY) {
+      newIndex = i;
+      break;
+    }
+  }
+  
+  // Move placeholder if position changed
+  if (newIndex !== taskDragState.currentIndex) {
+    taskDragState.currentIndex = newIndex;
+    
+    // Remove placeholder from current position
+    taskDragState.placeholder.remove();
+    
+    // Insert at new position
+    if (newIndex >= items.length) {
+      taskDragState.listEl.appendChild(taskDragState.placeholder);
+    } else {
+      taskDragState.listEl.insertBefore(taskDragState.placeholder, items[newIndex]);
+    }
+  }
+}
+
+function endTaskDrag() {
+  if (!taskDragState.active) return;
+  
+  document.removeEventListener("touchmove", moveTaskDrag);
+  document.removeEventListener("touchend", endTaskDrag);
+  document.removeEventListener("mousemove", moveTaskDrag);
+  document.removeEventListener("mouseup", endTaskDrag);
+  
+  const finalIndex = taskDragState.currentIndex;
+  const startIndex = taskDragState.startIndex;
+  
+  // Remove clone
+  if (taskDragState.clone) taskDragState.clone.remove();
+  
+  // Move the actual element to the placeholder position
+  taskDragState.listEl.insertBefore(taskDragState.container, taskDragState.placeholder);
+  
+  // Remove placeholder
+  if (taskDragState.placeholder) taskDragState.placeholder.remove();
+  
+  // Restore original element
+  taskDragState.container.classList.remove("dragging-original");
+  
+  // Apply reorder to data if changed
+  // Account for the fact that when moving down, the final index is relative to the filtered list
+  let adjustedFinalIndex = finalIndex;
+  if (finalIndex > startIndex) {
+    adjustedFinalIndex = finalIndex; // Already correct - placeholder was placed after items
+  }
+  
+  if (adjustedFinalIndex !== startIndex) {
+    reorderTaskInList(taskDragState.container.dataset.taskId, taskDragState.category, startIndex, adjustedFinalIndex);
+  }
+  
+  taskDragState.active = false;
+  saveTasks();
+}
+
+function reorderTaskInList(taskId, category, fromIdx, toIdx) {
+  const categoryTasks = tasks.filter(t => t.category === category);
+  const otherTasks = tasks.filter(t => t.category !== category);
+  
+  const [movedTask] = categoryTasks.splice(fromIdx, 1);
+  categoryTasks.splice(toIdx, 0, movedTask);
+  
+  // Rebuild tasks array
+  tasks = [];
+  categories.forEach(cat => {
+    if (cat === category) {
+      tasks.push(...categoryTasks);
+    } else {
+      tasks.push(...otherTasks.filter(t => t.category === cat));
+    }
+  });
+}
+
 function saveTask() {
   const label = document.getElementById("edit-label").value.trim();
   if (!label) return;
@@ -1282,17 +1613,12 @@ function renderTasks() {
 
     const sectionActions = document.createElement("div");
     sectionActions.className = "section-actions";
-    const manageBtn = document.createElement("button");
-    manageBtn.className = "secondary";
-    manageBtn.textContent = "⚙";
-    manageBtn.title = "Manage tasks";
-    manageBtn.addEventListener("click", () => openManageModal(category));
     const addBtnTop = document.createElement("button");
     addBtnTop.className = "secondary";
     addBtnTop.textContent = "+";
     addBtnTop.title = "Add task";
     addBtnTop.addEventListener("click", () => openEditModal(null, category));
-    sectionActions.append(manageBtn, addBtnTop);
+    sectionActions.append(addBtnTop);
     headerRow.appendChild(sectionActions);
 
     section.appendChild(headerRow);
@@ -1303,20 +1629,22 @@ function renderTasks() {
     tasks
       .filter((t) => t.category === category)
       .forEach((task) => {
-        const row = document.createElement("div");
-        const hasProgress = task.goal !== undefined;
-        row.className = hasProgress ? "task has-progress" : "task";
-        row.dataset.taskId = task.id;
+        const container = document.createElement("div");
+        container.className = "task-swipe-container";
+        container.dataset.taskId = task.id;
+        container.dataset.category = category;
 
         const count = countFor(task.id);
+        const hasProgress = task.goal !== undefined;
         
+        let taskContent = "";
         if (hasProgress) {
           const periodCount = getTaskPeriodCount(task);
           const goal = task.goal;
           const percent = Math.min((periodCount / goal) * 100, 100);
           const isComplete = periodCount >= goal;
           
-          row.innerHTML = `
+          taskContent = `
             <div class="task-top">
               <span class="dot" style="background: ${task.color}"></span>
               <div class="info">
@@ -1336,7 +1664,7 @@ function renderTasks() {
             </div>
           `;
         } else {
-          row.innerHTML = `
+          taskContent = `
             <span class="dot" style="background: ${task.color}"></span>
             <div class="info">
               <div class="label">${task.label}</div>
@@ -1349,12 +1677,56 @@ function renderTasks() {
           `;
         }
 
-        const removeBtn = row.querySelector(".action-minus");
-        const addBtn = row.querySelector(".action-plus");
-        addBtn.addEventListener("click", () => addWin(task));
-        removeBtn.addEventListener("click", () => removeWinForTask(task.id));
+        container.innerHTML = `
+          <div class="task-actions-left">
+            <button class="drag-handle-btn" title="Drag to reorder">☰</button>
+          </div>
+          <div class="task-swipe-wrapper">
+            <div class="task ${hasProgress ? 'has-progress' : ''}" data-task-id="${task.id}">
+              ${taskContent}
+            </div>
+          </div>
+          <div class="task-actions-right">
+            <button class="edit-btn" title="Edit">✎</button>
+            <button class="delete-btn" title="Delete">🗑</button>
+          </div>
+        `;
 
-        list.appendChild(row);
+        // Bind action buttons
+        const removeBtn = container.querySelector(".action-minus");
+        const addBtn = container.querySelector(".action-plus");
+        addBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          addWin(task);
+        });
+        removeBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          removeWinForTask(task.id);
+        });
+
+        // Bind edit/delete buttons
+        container.querySelector(".edit-btn").addEventListener("click", (e) => {
+          e.stopPropagation();
+          resetSwipeState(container);
+          openEditModal(task, category);
+        });
+        container.querySelector(".delete-btn").addEventListener("click", (e) => {
+          e.stopPropagation();
+          resetSwipeState(container);
+          showConfirm(
+            `Delete "${task.label}"?`,
+            "This task will be removed. Any stickers you've added for it will remain in your history.",
+            () => {
+              deleteTask(task.id);
+              render();
+            }
+          );
+        });
+
+        // Initialize swipe and drag handlers
+        initSwipeHandlers(container, category);
+
+        list.appendChild(container);
       });
 
     section.appendChild(list);
@@ -1365,7 +1737,9 @@ function renderTasks() {
 // Update only the dynamic parts of tasks without rebuilding DOM
 function updateTasksInPlace() {
   tasks.forEach((task) => {
-    const row = document.querySelector(`[data-task-id="${task.id}"]`);
+    // Look for the task element inside the swipe container
+    const container = document.querySelector(`.task-swipe-container[data-task-id="${task.id}"]`);
+    const row = container ? container.querySelector(".task") : document.querySelector(`[data-task-id="${task.id}"]`);
     if (!row) return;
     
     const count = countFor(task.id);
