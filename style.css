@@ -2188,6 +2188,8 @@ button.text.danger:hover {
 
 .emoji-input-row input {
   flex: 1;
+  text-align: center;
+  font-size: 24px;
 }
 
 .emoji-picker-btn {
@@ -2217,7 +2219,7 @@ button.text.danger:hover {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
   padding: 12px;
   z-index: 100;
-  max-height: 200px;
+  max-height: 280px;
   overflow-y: auto;
 }
 
@@ -2330,7 +2332,7 @@ button.text.danger:hover {
 .completed-win-badge {
   display: inline-block;
   background: rgba(255, 255, 255, 0.5);
-  padding: 4px 10px;
+  padding: 6px 14px;
   border-radius: 20px;
   font-size: 12px;
   font-weight: 600;
@@ -2338,6 +2340,106 @@ button.text.danger:hover {
   margin-top: 8px;
   position: relative;
   z-index: 1;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+}
+
+.completed-win-badge:hover {
+  background: rgba(255, 255, 255, 0.8);
+  transform: scale(1.05);
+}
+
+.completed-win-badge.redeemed {
+  background: #34c759;
+  color: white;
+  border-color: #2db84d;
+}
+
+/* Redeemed card state */
+.completed-win-card.redeemed {
+  background: #e5e5e7 !important;
+  animation: none !important;
+}
+
+.completed-win-card.redeemed::before {
+  display: none;
+}
+
+.completed-win-card.redeemed .completed-win-emoji {
+  animation: none;
+  opacity: 0.6;
+}
+
+.completed-win-card.redeemed .completed-win-label {
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.completed-win-card .redeemed-info {
+  margin-top: 8px;
+  font-size: 11px;
+  color: rgba(0, 0, 0, 0.5);
+  position: relative;
+  z-index: 1;
+}
+
+/* Redeem Modal */
+.redeem-goal-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 8px 0 20px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 8px;
+  text-align: center;
+}
+
+.reward-select {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+  font-size: 15px;
+  background: white;
+  cursor: pointer;
+}
+
+.reward-select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+textarea#redeem-note {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: none;
+}
+
+textarea#redeem-note:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.success-btn {
+  background: linear-gradient(135deg, #34c759, #30d158);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.success-btn:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(52, 199, 89, 0.4);
 }
 
 .no-completed-wins {

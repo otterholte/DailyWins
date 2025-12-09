@@ -33,11 +33,13 @@ const state = {
   monthlyRewards: [...defaultMonthlyRewards],
   completions: {},
   tasks: [],
+  redeemedGoals: [], // Track redeemed goals: { goalId, rewardId, note, date, monthKey }
   account: null,
 };
 
 let editingReward = null;
 let editingCategory = null;
+let redeemingGoal = null;
 
 init();
 
@@ -56,6 +58,7 @@ function loadLocalState() {
     if (parsed.monthlyRewards) state.monthlyRewards = parsed.monthlyRewards;
     if (parsed.completions) state.completions = parsed.completions;
     if (parsed.customTasks) state.tasks = parsed.customTasks;
+    if (parsed.redeemedGoals) state.redeemedGoals = parsed.redeemedGoals;
   }
 }
 
@@ -64,6 +67,7 @@ function saveState() {
   const data = saved ? JSON.parse(saved) : {};
   data.weeklyRewards = state.weeklyRewards;
   data.monthlyRewards = state.monthlyRewards;
+  data.redeemedGoals = state.redeemedGoals;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   
   if (state.account) {
@@ -79,6 +83,7 @@ async function syncToServer() {
       .update({
         weekly_rewards: state.weeklyRewards,
         monthly_rewards: state.monthlyRewards,
+        redeemed_goals: state.redeemedGoals,
       })
       .eq('id', state.account.id);
   } catch (err) {
@@ -115,6 +120,11 @@ function bindControls() {
   
   // Emoji picker
   initEmojiPicker();
+  
+  // Redeem modal
+  document.getElementById("redeem-cancel").addEventListener("click", closeRedeemModal);
+  document.getElementById("redeem-save").addEventListener("click", saveRedemption);
+  document.querySelector("#redeem-modal .modal-backdrop").addEventListener("click", closeRedeemModal);
 }
 
 function initEmojiPicker() {
@@ -334,13 +344,94 @@ function renderCompletedWins() {
     return;
   }
   
-  grid.innerHTML = completedGoals.map((goal, index) => `
-    <div class="completed-win-card" style="animation-delay: ${index * 0.1}s">
-      <div class="completed-win-emoji">${goal.emoji || "🏆"}</div>
-      <div class="completed-win-label">${goal.label}</div>
-      <div class="completed-win-badge">${goal.type === "Weekly" ? "Weekly Win" : "Monthly Win"} ✓</div>
-    </div>
+  const monthKey = getMonthKey();
+  
+  grid.innerHTML = completedGoals.map((goal, index) => {
+    const redemption = getRedemptionForGoal(goal.id, monthKey);
+    const isRedeemed = !!redemption;
+    const rewardText = redemption ? getRewardText(redemption.rewardId) : '';
+    
+    return `
+      <div class="completed-win-card ${isRedeemed ? 'redeemed' : ''}" data-id="${goal.id}" style="animation-delay: ${index * 0.1}s">
+        <div class="completed-win-emoji">${goal.emoji || "🏆"}</div>
+        <div class="completed-win-label">${goal.label}</div>
+        <button class="completed-win-badge ${isRedeemed ? 'redeemed' : ''}" data-goal-id="${goal.id}" data-goal-type="${goal.type}">
+          ${isRedeemed ? 'Redeemed ✓' : (goal.type === "Weekly" ? "Weekly Win ✓" : "Monthly Win ✓")}
+        </button>
+        ${isRedeemed ? `<div class="redeemed-info">${rewardText}${redemption.note ? ` - "${redemption.note}"` : ''}</div>` : ''}
+      </div>
+    `;
+  }).join("");
+  
+  // Add click handlers to badges
+  grid.querySelectorAll(".completed-win-badge:not(.redeemed)").forEach(badge => {
+    badge.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const goalId = badge.dataset.goalId;
+      const goalType = badge.dataset.goalType;
+      const goal = completedGoals.find(g => g.id === goalId);
+      openRedeemModal(goal);
+    });
+  });
+}
+
+function getMonthKey() {
+  const now = new Date();
+  return `${now.getFullYear()}-${now.getMonth() + 1}`;
+}
+
+function getRedemptionForGoal(goalId, monthKey) {
+  return state.redeemedGoals.find(r => r.goalId === goalId && r.monthKey === monthKey);
+}
+
+function getRewardText(rewardId) {
+  const allRewards = [...state.weeklyRewards, ...state.monthlyRewards];
+  const reward = allRewards.find(r => r.id === rewardId);
+  if (!reward) return '';
+  return reward.type === 'money' ? `$${reward.amount}` : reward.text;
+}
+
+function openRedeemModal(goal) {
+  redeemingGoal = goal;
+  
+  document.getElementById("redeem-goal-name").textContent = `${goal.emoji || "🏆"} ${goal.label}`;
+  
+  // Populate reward select
+  const select = document.getElementById("redeem-reward-select");
+  const rewards = goal.type === "Weekly" ? state.weeklyRewards : state.monthlyRewards;
+  
+  select.innerHTML = rewards.map(r => `
+    <option value="${r.id}">${r.emoji || "🎁"} ${r.type === "money" ? `$${r.amount} spending money` : r.text}</option>
   `).join("");
+  
+  document.getElementById("redeem-note").value = "";
+  document.getElementById("redeem-modal").classList.remove("hidden");
+}
+
+function closeRedeemModal() {
+  document.getElementById("redeem-modal").classList.add("hidden");
+  redeemingGoal = null;
+}
+
+function saveRedemption() {
+  if (!redeemingGoal) return;
+  
+  const rewardId = document.getElementById("redeem-reward-select").value;
+  const note = document.getElementById("redeem-note").value.trim();
+  const monthKey = getMonthKey();
+  
+  // Add redemption
+  state.redeemedGoals.push({
+    goalId: redeemingGoal.id,
+    rewardId,
+    note,
+    date: new Date().toISOString(),
+    monthKey
+  });
+  
+  saveState();
+  closeRedeemModal();
+  render();
 }
 
 function getCompletedGoalsThisMonth() {
@@ -478,6 +569,7 @@ async function loadUserProfile(user) {
     if (profile.monthly_rewards) state.monthlyRewards = profile.monthly_rewards;
     if (profile.completions) state.completions = profile.completions;
     if (profile.tasks) state.tasks = profile.tasks;
+    if (profile.redeemed_goals) state.redeemedGoals = profile.redeemed_goals;
     
     updateAccountButton();
     render();

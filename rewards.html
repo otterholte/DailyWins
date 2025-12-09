@@ -63,7 +63,7 @@
         <!-- Completed Wins This Month -->
         <section class="completed-wins-section" id="completed-wins-section">
           <h2 class="completed-wins-title">🎉 Your Completed Goals This Month!</h2>
-          <p class="completed-wins-subtitle">Pick a reward from the list above to celebrate!</p>
+          <p class="completed-wins-subtitle">Click the badge on each goal to redeem your reward!</p>
           <div id="completed-wins-grid" class="completed-wins-grid">
             <!-- Completed wins will be rendered here -->
           </div>
@@ -89,6 +89,32 @@
         </div>
       </div>
     </nav>
+
+    <!-- Redeem Reward Modal -->
+    <div id="redeem-modal" class="modal hidden">
+      <div class="modal-backdrop"></div>
+      <div class="modal-content">
+        <h3>🎉 Redeem Your Reward!</h3>
+        <p class="redeem-goal-name" id="redeem-goal-name"></p>
+        
+        <div class="form-group">
+          <label>Which reward did you choose?</label>
+          <select id="redeem-reward-select" class="reward-select">
+            <!-- Options populated dynamically -->
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label>Add a note (optional)</label>
+          <textarea id="redeem-note" placeholder="e.g. Got myself a latte! ☕" rows="2"></textarea>
+        </div>
+        
+        <div class="modal-actions">
+          <button id="redeem-cancel" class="secondary">Cancel</button>
+          <button id="redeem-save" class="success-btn">Redeem! 🎁</button>
+        </div>
+      </div>
+    </div>
 
     <!-- Add/Edit Reward Modal -->
     <div id="reward-modal" class="modal hidden">
