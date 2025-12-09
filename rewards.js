@@ -662,14 +662,19 @@ function updateAuthUI() {
 }
 
 async function submitAuth() {
-  const email = document.getElementById("auth-username").value.trim();
+  let email = document.getElementById("auth-username").value.trim();
   const password = document.getElementById("auth-password").value;
   const name = document.getElementById("auth-name").value.trim();
   const submitBtn = document.getElementById("auth-submit");
   
   if (!email || !password) {
-    showAuthError("Please enter email and password");
+    showAuthError("Please enter username/email and password");
     return;
+  }
+  
+  // If no @ symbol, treat as username and convert to email format
+  if (!email.includes("@")) {
+    email = `${email.toLowerCase()}@dailywins.app`;
   }
   
   const originalText = submitBtn.textContent;
