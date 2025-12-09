@@ -1027,6 +1027,14 @@ function render() {
   renderSelectedDateLabel();
 }
 
+// Lighter update that doesn't rebuild tasks
+function renderQuick() {
+  renderStats();
+  renderGrandProgress();
+  renderCalendar();
+  updateTasksInPlace();
+}
+
 function renderGrandProgress() {
   const row = document.getElementById("progress-row");
   const total = monthCount();
@@ -1298,6 +1306,7 @@ function renderTasks() {
         const row = document.createElement("div");
         const hasProgress = task.goal !== undefined;
         row.className = hasProgress ? "task has-progress" : "task";
+        row.dataset.taskId = task.id;
 
         const count = countFor(task.id);
         
@@ -1312,7 +1321,7 @@ function renderTasks() {
               <span class="dot" style="background: ${task.color}"></span>
               <div class="info">
                 <div class="label">${task.label}</div>
-                ${count > 0 ? `<div class="count">${count} today</div>` : ""}
+                <div class="count" data-count>${count > 0 ? `${count} today` : ""}</div>
               </div>
               <div class="actions">
                 <button class="action-minus">−</button>
@@ -1321,9 +1330,9 @@ function renderTasks() {
             </div>
             <div class="task-progress">
               <div class="task-progress-bar">
-                <div class="task-progress-fill ${isComplete ? 'complete' : ''}" style="background: ${task.color}; width: ${percent}%"></div>
+                <div class="task-progress-fill ${isComplete ? 'complete' : ''}" data-progress-fill style="background: ${task.color}; width: ${percent}%"></div>
               </div>
-              <span class="task-progress-text">${periodCount}/${goal}</span>
+              <span class="task-progress-text" data-progress-text>${periodCount}/${goal}</span>
             </div>
           `;
         } else {
@@ -1331,7 +1340,7 @@ function renderTasks() {
             <span class="dot" style="background: ${task.color}"></span>
             <div class="info">
               <div class="label">${task.label}</div>
-              ${count > 0 ? `<div class="count">${count} today</div>` : ""}
+              <div class="count" data-count>${count > 0 ? `${count} today` : ""}</div>
             </div>
             <div class="actions">
               <button class="action-minus">−</button>
@@ -1350,6 +1359,38 @@ function renderTasks() {
 
     section.appendChild(list);
     container.appendChild(section);
+  });
+}
+
+// Update only the dynamic parts of tasks without rebuilding DOM
+function updateTasksInPlace() {
+  tasks.forEach((task) => {
+    const row = document.querySelector(`[data-task-id="${task.id}"]`);
+    if (!row) return;
+    
+    const count = countFor(task.id);
+    const countEl = row.querySelector("[data-count]");
+    if (countEl) {
+      countEl.textContent = count > 0 ? `${count} today` : "";
+    }
+    
+    if (task.goal !== undefined) {
+      const periodCount = getTaskPeriodCount(task);
+      const goal = task.goal;
+      const percent = Math.min((periodCount / goal) * 100, 100);
+      const isComplete = periodCount >= goal;
+      
+      const fillEl = row.querySelector("[data-progress-fill]");
+      const textEl = row.querySelector("[data-progress-text]");
+      
+      if (fillEl) {
+        fillEl.style.width = `${percent}%`;
+        fillEl.classList.toggle("complete", isComplete);
+      }
+      if (textEl) {
+        textEl.textContent = `${periodCount}/${goal}`;
+      }
+    }
   });
 }
 
@@ -1413,7 +1454,7 @@ function addWin(task) {
     showStarModal(state.selectedDate, task.id);
   }
 
-  render();
+  renderQuick();
 }
 
 // Count daily wins excluding linked completions (to avoid double counting)
@@ -1426,7 +1467,7 @@ function removeWin(dateKey, id) {
   const items = state.completions[dateKey] || [];
   state.completions[dateKey] = items.filter((i) => i.id !== id);
   saveState();
-  render();
+  renderQuick();
 }
 
 function removeWinForTask(taskId) {
@@ -1437,7 +1478,7 @@ function removeWinForTask(taskId) {
     items.splice(idx, 1);
     state.completions[key] = items;
     saveState();
-    render();
+    renderQuick();
   }
 }
 
