@@ -118,34 +118,45 @@ async function shareWithBuddy() {
     email = `${email}@dailywins.app`;
   }
   
-  // Find user by email (stored in username field) or by username part
+  // Find user by email
   let buddyProfile = null;
   
-  // First try to find by full email in username field
+  // First try to find by email field
   const { data: byEmail } = await supabase
     .from("profiles")
-    .select("id, name, username, avatar_url")
-    .eq("username", email)
+    .select("id, name, username, email, avatar_url")
+    .eq("email", email)
     .single();
   
   if (byEmail) {
     buddyProfile = byEmail;
   } else {
-    // Try to find by just the username part (before @)
-    const usernamePart = email.split("@")[0];
+    // Try to find by username field (for backwards compatibility)
     const { data: byUsername } = await supabase
       .from("profiles")
-      .select("id, name, username, avatar_url")
-      .eq("username", usernamePart)
+      .select("id, name, username, email, avatar_url")
+      .eq("username", email)
       .single();
     
     if (byUsername) {
       buddyProfile = byUsername;
+    } else {
+      // Try by just the username part
+      const usernamePart = email.split("@")[0];
+      const { data: byUsernamePart } = await supabase
+        .from("profiles")
+        .select("id, name, username, email, avatar_url")
+        .eq("username", usernamePart)
+        .single();
+      
+      if (byUsernamePart) {
+        buddyProfile = byUsernamePart;
+      }
     }
   }
   
   if (!buddyProfile) {
-    alert("User not found. Make sure they have an account and you entered the correct email.");
+    alert("User not found. Make sure they have an account and have logged in at least once.");
     return;
   }
   
@@ -306,6 +317,14 @@ let userProfile = null;
 
 async function loadUserProfile() {
   if (!currentUser) return;
+  
+  // Make sure the email is stored in the profile
+  await supabase.from("profiles").upsert({
+    id: currentUser.id,
+    email: currentUser.email,
+    updated_at: new Date().toISOString()
+  }, { onConflict: 'id' });
+  
   const { data } = await supabase
     .from("profiles")
     .select("*")
@@ -399,6 +418,7 @@ async function submitAuth() {
       if (data.user) {
         await supabase.from("profiles").upsert({
           id: data.user.id,
+          email: email,
           username: email.split('@')[0],
           name: name || email.split('@')[0],
           updated_at: new Date().toISOString()

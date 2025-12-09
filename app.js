@@ -488,6 +488,13 @@ async function submitAuth() {
 
 async function loadUserProfile(user) {
   try {
+    // Ensure email is stored in profile
+    await supabase.from('profiles').upsert({
+      id: user.id,
+      email: user.email,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'id' });
+    
     const { data: profile, error } = await supabase
       .from('profiles')
       .select('*')
