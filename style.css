@@ -2214,8 +2214,8 @@ button.text.danger:hover {
 
 .jar-star.super-star {
   font-size: 42px;
-  filter: hue-rotate(260deg) saturate(1.5) drop-shadow(0 2px 8px rgba(155, 89, 182, 0.6));
-  animation: floatSuperStar 2s ease-in-out infinite;
+  filter: hue-rotate(280deg) saturate(2) brightness(0.85) drop-shadow(0 2px 8px rgba(102, 51, 153, 0.7));
+  animation: floatSuperStar 4s ease-in-out infinite;
 }
 
 .jar-star:nth-child(odd) {
@@ -2229,7 +2229,7 @@ button.text.danger:hover {
 
 @keyframes floatSuperStar {
   0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
-  50% { transform: translateY(-8px) rotate(15deg) scale(1.1); }
+  50% { transform: translateY(-3px) rotate(5deg) scale(1.02); }
 }
 
 .jar-count {
