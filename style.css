@@ -671,6 +671,12 @@ button.danger {
   letter-spacing: 0.03em;
 }
 
+.task-card-header .swipe-hint {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
 .task-section {
   margin-bottom: 20px;
 }
