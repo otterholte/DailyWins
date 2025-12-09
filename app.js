@@ -1011,21 +1011,36 @@ function handleSwipeMove(e) {
   const leftActions = swipeState.container.querySelector(".task-actions-left");
   const rightActions = swipeState.container.querySelector(".task-actions-right");
   
-  // Handle swipe RIGHT (show drag handle) - content slides
-  if (deltaX > 0 || wasSwipedRight) {
-    let offset = deltaX;
-    if (wasSwipedRight) offset += 56;
+  // If already swiped left (edit/delete showing), handle closing or further opening
+  if (wasSwipedLeft) {
+    // Calculate width: start at 120, decrease as user swipes right
+    let revealWidth = 120 + (-deltaX); // deltaX positive = swipe right = close
+    revealWidth = Math.max(0, Math.min(120, revealWidth));
+    
+    wrapper.style.transform = "";
+    leftActions.style.transform = "translateX(-100%)";
+    rightActions.style.width = `${revealWidth}px`;
+  }
+  // If already swiped right (drag handle showing), handle closing or further opening
+  else if (wasSwipedRight) {
+    let offset = 56 + deltaX; // deltaX negative = swipe left = close
     offset = Math.max(0, Math.min(56, offset));
     
     wrapper.style.transform = `translateX(${offset}px)`;
     leftActions.style.transform = `translateX(${offset - 56}px)`;
     rightActions.style.width = "0";
   }
-  // Handle swipe LEFT (show edit/delete) - content stays, buttons slide in
-  else if (deltaX < 0 || wasSwipedLeft) {
-    let revealWidth = -deltaX;
-    if (wasSwipedLeft) revealWidth += 120;
-    revealWidth = Math.max(0, Math.min(120, revealWidth));
+  // Fresh swipe RIGHT (show drag handle) - content slides
+  else if (deltaX > 0) {
+    let offset = Math.max(0, Math.min(56, deltaX));
+    
+    wrapper.style.transform = `translateX(${offset}px)`;
+    leftActions.style.transform = `translateX(${offset - 56}px)`;
+    rightActions.style.width = "0";
+  }
+  // Fresh swipe LEFT (show edit/delete) - content stays, buttons slide in
+  else if (deltaX < 0) {
+    let revealWidth = Math.max(0, Math.min(120, -deltaX));
     
     wrapper.style.transform = "";
     leftActions.style.transform = "translateX(-100%)";
