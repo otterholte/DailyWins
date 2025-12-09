@@ -56,14 +56,15 @@ function bindAccount() {
   document.getElementById("account-btn").addEventListener("click", openAccount);
   document.getElementById("auth-cancel").addEventListener("click", closeAccountModal);
   document.getElementById("auth-submit").addEventListener("click", submitAuth);
-  document.getElementById("auth-toggle-btn").addEventListener("click", toggleAuthMode);
-  document.getElementById("profile-cancel").addEventListener("click", closeAccountModal);
-  document.getElementById("profile-save").addEventListener("click", saveProfile);
-  document.getElementById("logout-btn").addEventListener("click", logout);
-  document.getElementById("upload-avatar-btn").addEventListener("click", () => {
-    document.getElementById("avatar-input").click();
+  document.getElementById("auth-toggle").addEventListener("click", toggleAuthMode);
+  document.getElementById("auth-password").addEventListener("keypress", (e) => {
+    if (e.key === "Enter") submitAuth();
   });
-  document.getElementById("avatar-input").addEventListener("change", uploadAvatar);
+  document.getElementById("profile-close").addEventListener("click", closeAccountModal);
+  document.getElementById("profile-save").addEventListener("click", saveProfile);
+  document.getElementById("profile-logout").addEventListener("click", logout);
+  document.getElementById("profile-image").addEventListener("change", uploadAvatar);
+  document.getElementById("change-password-btn").addEventListener("click", changePassword);
   document.querySelector("#account-modal .modal-backdrop").addEventListener("click", closeAccountModal);
   
   // Login prompt button
@@ -309,8 +310,8 @@ function showAuthView() {
   isRegistering = false;
   document.getElementById("auth-title").textContent = "Login";
   document.getElementById("auth-submit").textContent = "Login";
-  document.getElementById("auth-toggle-text").textContent = "Don't have an account?";
-  document.getElementById("auth-toggle-btn").textContent = "Register";
+  document.getElementById("auth-toggle").textContent = "Create Account";
+  document.getElementById("auth-name-group").classList.add("hidden");
 }
 
 function showProfileView() {
@@ -320,71 +321,92 @@ function showProfileView() {
     document.getElementById("profile-name").value = userProfile.name || "";
     document.getElementById("profile-username").value = userProfile.username || "";
     if (userProfile.avatar_url) {
-      document.getElementById("profile-avatar").innerHTML = `<img src="${userProfile.avatar_url}" alt="">`;
+      document.getElementById("avatar-preview").innerHTML = `<img src="${userProfile.avatar_url}" alt="">`;
     }
   }
 }
 
 function toggleAuthMode() {
   isRegistering = !isRegistering;
+  const nameGroup = document.getElementById("auth-name-group");
   if (isRegistering) {
-    document.getElementById("auth-title").textContent = "Register";
+    document.getElementById("auth-title").textContent = "Create Account";
     document.getElementById("auth-submit").textContent = "Register";
-    document.getElementById("auth-toggle-text").textContent = "Already have an account?";
-    document.getElementById("auth-toggle-btn").textContent = "Login";
+    document.getElementById("auth-toggle").textContent = "Already have an account?";
+    nameGroup.classList.remove("hidden");
   } else {
     document.getElementById("auth-title").textContent = "Login";
     document.getElementById("auth-submit").textContent = "Login";
-    document.getElementById("auth-toggle-text").textContent = "Don't have an account?";
-    document.getElementById("auth-toggle-btn").textContent = "Register";
+    document.getElementById("auth-toggle").textContent = "Create Account";
+    nameGroup.classList.add("hidden");
   }
 }
 
 async function submitAuth() {
-  const username = document.getElementById("auth-username").value.trim().toLowerCase();
+  let email = document.getElementById("auth-username").value.trim();
   const password = document.getElementById("auth-password").value;
+  const name = document.getElementById("auth-name").value.trim();
+  const submitBtn = document.getElementById("auth-submit");
   
-  if (!username || !password) {
-    alert("Please enter username and password");
+  if (!email || !password) {
+    showAuthError("Please enter username/email and password");
     return;
   }
   
-  const btn = document.getElementById("auth-submit");
-  btn.textContent = "Loading...";
-  btn.disabled = true;
+  // If no @ symbol, treat as username and convert to email format
+  if (!email.includes("@")) {
+    email = `${email.toLowerCase()}@dailywins.app`;
+  }
+  
+  const originalText = submitBtn.textContent;
+  submitBtn.textContent = "Loading...";
+  submitBtn.disabled = true;
+  clearAuthErrors();
   
   try {
-    const email = `${username}@dailywins.app`;
-    
     if (isRegistering) {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: { data: { username } }
+        options: { data: { name: name || email.split('@')[0] } }
       });
       if (error) throw error;
       
       if (data.user) {
         await supabase.from("profiles").upsert({
           id: data.user.id,
-          username,
-          name: username,
+          username: email.split('@')[0],
+          name: name || email.split('@')[0],
           updated_at: new Date().toISOString()
         });
+        await loadUserProfile();
+        showProfileView();
       }
-      alert("Account created! You can now log in.");
-      toggleAuthMode();
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       closeAccountModal();
     }
+    
+    document.getElementById("auth-username").value = "";
+    document.getElementById("auth-password").value = "";
+    document.getElementById("auth-name").value = "";
   } catch (error) {
-    alert(error.message || "Authentication failed");
+    showAuthError(error.message || "Authentication failed");
   } finally {
-    btn.textContent = isRegistering ? "Register" : "Login";
-    btn.disabled = false;
+    submitBtn.textContent = originalText;
+    submitBtn.disabled = false;
   }
+}
+
+function showAuthError(message) {
+  const el = document.getElementById("auth-error");
+  el.textContent = message;
+  el.classList.remove("hidden");
+}
+
+function clearAuthErrors() {
+  document.getElementById("auth-error").classList.add("hidden");
 }
 
 async function saveProfile() {
@@ -430,8 +452,23 @@ async function uploadAvatar(e) {
     .eq("id", currentUser.id);
   
   userProfile = { ...userProfile, avatar_url: publicUrl };
-  document.getElementById("profile-avatar").innerHTML = `<img src="${publicUrl}" alt="">`;
+  document.getElementById("avatar-preview").innerHTML = `<img src="${publicUrl}" alt="">`;
   updateAccountButton();
+}
+
+async function changePassword() {
+  const newPassword = prompt("Enter new password (min 6 characters):");
+  if (!newPassword || newPassword.length < 6) {
+    if (newPassword) alert("Password must be at least 6 characters");
+    return;
+  }
+  
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) {
+    alert("Failed to change password: " + error.message);
+  } else {
+    alert("Password changed successfully!");
+  }
 }
 
 async function logout() {

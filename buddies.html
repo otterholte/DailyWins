@@ -3,24 +3,27 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#FF6B35" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Daily Wins" />
   <title>Accountability Buddies - Daily Wins</title>
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="/icons/icon-192.svg" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
   <link rel="stylesheet" href="style.css" />
-  <link rel="manifest" href="manifest.json" />
-  <link rel="icon" href="icons/icon-192.png" sizes="192x192" />
-  <link rel="apple-touch-icon" href="icons/icon-192.png" />
 </head>
-<body class="light">
+<body>
   <div class="app">
     <header class="top-bar">
-      <div class="nav-toggle">
-        <button id="menu-btn" class="icon-btn">☰</button>
+      <div class="header-left">
+        <button id="menu-btn" class="menu-btn">☰</button>
       </div>
-      <div class="logo">
-        <span class="logo-icon">👥</span>
-        <h1>Accountability Buddies</h1>
+      <div class="header-center">
+        <h1><span class="logo-icon">👥</span> Buddies</h1>
       </div>
-      <div class="top-actions header-actions">
-        <button id="account-btn" class="account-btn">👤</button>
+      <div class="header-right">
+        <button id="account-btn" class="icon-btn" title="Profile">👤</button>
       </div>
     </header>
 
@@ -28,10 +31,19 @@
     <nav id="nav-drawer" class="nav-drawer hidden">
       <div class="nav-drawer-backdrop"></div>
       <div class="nav-drawer-content">
-        <a href="index.html" class="nav-item">★ Daily Wins</a>
-        <a href="star-jar.html" class="nav-item">⭐ Star Jar</a>
-        <a href="rewards.html" class="nav-item">🎁 Rewards</a>
-        <a href="buddies.html" class="nav-item active">👥 Buddies</a>
+        <div class="nav-header">
+          <span class="nav-logo">★</span>
+          <span>Daily Wins</span>
+        </div>
+        <ul class="nav-links">
+          <li><a href="index.html" class="nav-link"><span class="nav-icon">🏆</span> Daily Wins</a></li>
+          <li><a href="star-jar.html" class="nav-link"><span class="nav-icon">⭐</span> Star Jar</a></li>
+          <li><a href="rewards.html" class="nav-link"><span class="nav-icon">🎁</span> Rewards</a></li>
+          <li><a href="buddies.html" class="nav-link active"><span class="nav-icon">👥</span> Buddies</a></li>
+        </ul>
+        <div class="nav-footer">
+          <p>Track your wins!</p>
+        </div>
       </div>
     </nav>
 
@@ -91,48 +103,62 @@
   <div id="account-modal" class="modal hidden">
     <div class="modal-backdrop"></div>
     <div class="modal-content account-modal-content">
+      <!-- Auth View (Login/Register) -->
       <div id="auth-view">
         <h3 id="auth-title">Login</h3>
         <div class="form-group">
-          <label>Username</label>
-          <input type="text" id="auth-username" />
+          <label>Username or Email</label>
+          <input type="text" id="auth-username" placeholder="Username or email" autocomplete="username" />
         </div>
         <div class="form-group">
           <label>Password</label>
-          <input type="password" id="auth-password" />
+          <input type="password" id="auth-password" placeholder="Password" autocomplete="current-password" />
         </div>
+        <div class="form-group hidden" id="auth-name-group">
+          <label>Display Name</label>
+          <input type="text" id="auth-name" placeholder="Your name" />
+        </div>
+        <p id="auth-error" class="error-text hidden"></p>
         <div class="modal-actions">
           <button id="auth-cancel" class="secondary">Cancel</button>
-          <button id="auth-submit" class="primary-btn">Login</button>
+          <button id="auth-submit">Login</button>
         </div>
-        <p class="auth-toggle">
-          <span id="auth-toggle-text">Don't have an account?</span>
-          <button id="auth-toggle-btn" class="link-btn">Register</button>
+        <p class="auth-switch">
+          <button id="auth-toggle" class="link-btn">Create Account</button>
         </p>
       </div>
+
+      <!-- Profile View -->
       <div id="profile-view" class="hidden">
-        <h3>Profile</h3>
-        <div class="profile-header">
-          <div class="avatar-upload">
-            <div id="profile-avatar" class="avatar-preview">👤</div>
-            <input type="file" id="avatar-input" accept="image/*" hidden />
-            <button id="upload-avatar-btn" class="secondary">Change Photo</button>
+        <h3>Your Profile</h3>
+        <div class="profile-section">
+          <div class="avatar-row">
+            <div id="avatar-preview" class="avatar-preview">👤</div>
+            <div class="avatar-actions">
+              <input type="file" id="profile-image" accept="image/*" hidden />
+              <button id="upload-btn" class="secondary" onclick="document.getElementById('profile-image').click()">
+                Change Photo
+              </button>
+            </div>
           </div>
         </div>
         <div class="form-group">
           <label>Display Name</label>
-          <input type="text" id="profile-name" />
+          <input type="text" id="profile-name" placeholder="Your name" />
         </div>
         <div class="form-group">
           <label>Username</label>
           <input type="text" id="profile-username" disabled />
         </div>
+        <p id="profile-error" class="error-text hidden"></p>
+        <p id="profile-success" class="success-text hidden"></p>
         <div class="modal-actions">
-          <button id="profile-cancel" class="secondary">Close</button>
+          <button id="profile-close" class="secondary">Close</button>
           <button id="profile-save">Save</button>
         </div>
-        <hr style="margin: 16px 0; border: none; border-top: 1px solid rgba(0,0,0,0.1);" />
-        <button id="logout-btn" class="danger-btn" style="width: 100%;">Logout</button>
+        <hr class="modal-divider" />
+        <button id="change-password-btn" class="secondary" style="width: 100%; margin-bottom: 8px;">Change Password</button>
+        <button id="profile-logout" class="danger-btn" style="width: 100%;">Logout</button>
       </div>
     </div>
   </div>
@@ -154,4 +180,3 @@
   <script src="buddies.js"></script>
 </body>
 </html>
-
