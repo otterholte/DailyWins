@@ -59,6 +59,15 @@
             <!-- Rewards will be rendered here -->
           </div>
         </section>
+
+        <!-- Completed Wins This Month -->
+        <section class="completed-wins-section" id="completed-wins-section">
+          <h2 class="completed-wins-title">🎉 Your Completed Goals This Month!</h2>
+          <p class="completed-wins-subtitle">Pick a reward from the list above to celebrate!</p>
+          <div id="completed-wins-grid" class="completed-wins-grid">
+            <!-- Completed wins will be rendered here -->
+          </div>
+        </section>
       </main>
     </div>
 
@@ -102,9 +111,15 @@
           <input type="text" id="reward-custom" placeholder="e.g. Watch a movie, Get ice cream" />
         </div>
         
-        <div class="form-group">
-          <label>Emoji (optional)</label>
-          <input type="text" id="reward-emoji" placeholder="e.g. 🍕 🎬 🛍️" maxlength="2" />
+        <div class="form-group emoji-input-group">
+          <label>Emoji</label>
+          <div class="emoji-input-row">
+            <input type="text" id="reward-emoji" placeholder="Pick an emoji →" maxlength="2" />
+            <button type="button" id="emoji-picker-btn" class="emoji-picker-btn">😀</button>
+          </div>
+          <div id="emoji-picker-popup" class="emoji-picker-popup hidden">
+            <div class="emoji-grid" id="emoji-grid"></div>
+          </div>
         </div>
         
         <p id="reward-error" class="error-text hidden"></p>

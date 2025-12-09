@@ -19,9 +19,20 @@ const defaultMonthlyRewards = [
   { id: "m4", type: "custom", text: "Buy something special", emoji: "🎁" },
 ];
 
+const emojiOptions = [
+  "🎁", "💰", "💵", "🛍️", "☕", "🍕", "🍔", "🍦", "🍰", "🧁",
+  "🎬", "🎮", "🎵", "🎧", "📚", "🛁", "💅", "💄", "👗", "👟",
+  "🌸", "🌺", "🌴", "🏖️", "✈️", "🚗", "🎢", "🎡", "🎪", "🎨",
+  "🏆", "⭐", "🌟", "✨", "💎", "👑", "🎯", "🎲", "🃏", "🎰",
+  "🍿", "🥤", "🍩", "🧋", "🍫", "🍪", "🥐", "🌮", "🍣", "🍱",
+  "💆", "🧘", "🏃", "🚴", "⛷️", "🏄", "🎾", "⚽", "🏀", "🎳"
+];
+
 const state = {
   weeklyRewards: [...defaultWeeklyRewards],
   monthlyRewards: [...defaultMonthlyRewards],
+  completions: {},
+  tasks: [],
   account: null,
 };
 
@@ -43,6 +54,8 @@ function loadLocalState() {
     const parsed = JSON.parse(saved);
     if (parsed.weeklyRewards) state.weeklyRewards = parsed.weeklyRewards;
     if (parsed.monthlyRewards) state.monthlyRewards = parsed.monthlyRewards;
+    if (parsed.completions) state.completions = parsed.completions;
+    if (parsed.customTasks) state.tasks = parsed.customTasks;
   }
 }
 
@@ -99,6 +112,43 @@ function bindControls() {
       document.getElementById("custom-input-group").classList.toggle("hidden", type !== "custom");
     });
   });
+  
+  // Emoji picker
+  initEmojiPicker();
+}
+
+function initEmojiPicker() {
+  const pickerBtn = document.getElementById("emoji-picker-btn");
+  const popup = document.getElementById("emoji-picker-popup");
+  const grid = document.getElementById("emoji-grid");
+  const input = document.getElementById("reward-emoji");
+  
+  // Populate emoji grid
+  grid.innerHTML = emojiOptions.map(emoji => 
+    `<button type="button" class="emoji-option" data-emoji="${emoji}">${emoji}</button>`
+  ).join("");
+  
+  // Toggle popup
+  pickerBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    popup.classList.toggle("hidden");
+  });
+  
+  // Select emoji
+  grid.addEventListener("click", (e) => {
+    if (e.target.classList.contains("emoji-option")) {
+      input.value = e.target.dataset.emoji;
+      pickerBtn.textContent = e.target.dataset.emoji;
+      popup.classList.add("hidden");
+    }
+  });
+  
+  // Close popup when clicking outside
+  document.addEventListener("click", (e) => {
+    if (!popup.contains(e.target) && e.target !== pickerBtn) {
+      popup.classList.add("hidden");
+    }
+  });
 }
 
 function openNav() {
@@ -112,6 +162,7 @@ function closeNav() {
 function render() {
   renderRewardsList("weekly", state.weeklyRewards);
   renderRewardsList("monthly", state.monthlyRewards);
+  renderCompletedWins();
 }
 
 function renderRewardsList(category, rewards) {
@@ -143,12 +194,16 @@ function openRewardModal(rewardId, category) {
   const modal = document.getElementById("reward-modal");
   const title = document.getElementById("reward-modal-title");
   const deleteBtn = document.getElementById("reward-delete");
+  const emojiBtn = document.getElementById("emoji-picker-btn");
+  const emojiPopup = document.getElementById("emoji-picker-popup");
   
   // Reset form
   document.getElementById("reward-amount").value = "";
   document.getElementById("reward-custom").value = "";
   document.getElementById("reward-emoji").value = "";
   document.getElementById("reward-error").classList.add("hidden");
+  emojiBtn.textContent = "😀";
+  emojiPopup.classList.add("hidden");
   
   // Set type toggle to money by default
   document.querySelectorAll(".reward-type-btn").forEach(b => b.classList.remove("active"));
@@ -175,6 +230,7 @@ function openRewardModal(rewardId, category) {
         document.getElementById("reward-custom").value = editingReward.text || "";
       }
       document.getElementById("reward-emoji").value = editingReward.emoji || "";
+      emojiBtn.textContent = editingReward.emoji || "😀";
     }
   } else {
     // Adding new reward
@@ -260,6 +316,108 @@ function generateId() {
   return Math.random().toString(36).substr(2, 9);
 }
 
+// ============ Completed Wins Section ============
+
+function renderCompletedWins() {
+  const section = document.getElementById("completed-wins-section");
+  const grid = document.getElementById("completed-wins-grid");
+  
+  const completedGoals = getCompletedGoalsThisMonth();
+  
+  if (completedGoals.length === 0) {
+    grid.innerHTML = `
+      <div class="no-completed-wins">
+        <div class="emoji">🎯</div>
+        <p>No completed goals this month yet.<br>Keep working on your weekly and monthly wins!</p>
+      </div>
+    `;
+    return;
+  }
+  
+  grid.innerHTML = completedGoals.map((goal, index) => `
+    <div class="completed-win-card" style="animation-delay: ${index * 0.1}s">
+      <div class="completed-win-emoji">${goal.emoji || "🏆"}</div>
+      <div class="completed-win-label">${goal.label}</div>
+      <div class="completed-win-badge">${goal.type === "Weekly" ? "Weekly Win" : "Monthly Win"} ✓</div>
+    </div>
+  `).join("");
+}
+
+function getCompletedGoalsThisMonth() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  
+  const completedGoals = [];
+  
+  // Get tasks with goals (weekly and monthly)
+  const goalsWithTargets = state.tasks.filter(t => 
+    (t.category === "Weekly" || t.category === "Monthly") && t.goal
+  );
+  
+  goalsWithTargets.forEach(task => {
+    const count = getTaskPeriodCount(task, year, month);
+    if (count >= task.goal) {
+      completedGoals.push({
+        id: task.id,
+        label: task.label,
+        type: task.category,
+        emoji: getCategoryEmoji(task.category),
+        color: task.color
+      });
+    }
+  });
+  
+  return completedGoals;
+}
+
+function getTaskPeriodCount(task, year, month) {
+  let total = 0;
+  
+  if (task.category === "Weekly") {
+    // Get current week range
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - dayOfWeek);
+    startOfWeek.setHours(0, 0, 0, 0);
+    
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    endOfWeek.setHours(23, 59, 59, 999);
+    
+    Object.entries(state.completions).forEach(([key, list]) => {
+      const date = fromKey(key);
+      if (date >= startOfWeek && date <= endOfWeek) {
+        total += list.filter(c => c.taskId === task.id).length;
+      }
+    });
+  } else {
+    // Monthly - count all completions this month
+    Object.entries(state.completions).forEach(([key, list]) => {
+      const date = fromKey(key);
+      if (date.getFullYear() === year && date.getMonth() === month) {
+        total += list.filter(c => c.taskId === task.id).length;
+      }
+    });
+  }
+  
+  return total;
+}
+
+function fromKey(key) {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function getCategoryEmoji(category) {
+  const emojis = {
+    "Weekly": "📅",
+    "Monthly": "📆"
+  };
+  return emojis[category] || "🏆";
+}
+
 // ============ Account Functions (same as other pages) ============
 
 async function bindAccount() {
@@ -318,6 +476,8 @@ async function loadUserProfile(user) {
     
     if (profile.weekly_rewards) state.weeklyRewards = profile.weekly_rewards;
     if (profile.monthly_rewards) state.monthlyRewards = profile.monthly_rewards;
+    if (profile.completions) state.completions = profile.completions;
+    if (profile.tasks) state.tasks = profile.tasks;
     
     updateAccountButton();
     render();
