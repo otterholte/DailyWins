@@ -41,13 +41,103 @@ let editingReward = null;
 let editingCategory = null;
 let redeemingGoal = null;
 
+// Buddy viewing state
+let viewingBuddy = null;
+
 init();
 
 async function init() {
   loadLocalState();
   bindControls();
   await bindAccount();
+  await checkBuddyViewing();
   render();
+}
+
+// Check URL for buddy parameter and load their data
+async function checkBuddyViewing() {
+  const params = new URLSearchParams(window.location.search);
+  const buddyId = params.get('buddy');
+  
+  if (!buddyId) {
+    removeBuddyBanner();
+    return;
+  }
+  
+  // Get current user
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    alert("You must be logged in to view a buddy's data");
+    window.location.href = "rewards.html";
+    return;
+  }
+  
+  // Check if we have permission to view this buddy
+  const { data: share, error } = await supabase
+    .from("buddy_shares")
+    .select("can_edit, owner_id")
+    .eq("owner_id", buddyId)
+    .eq("buddy_id", session.user.id)
+    .single();
+  
+  if (error || !share) {
+    alert("You don't have permission to view this user's data");
+    window.location.href = "rewards.html";
+    return;
+  }
+  
+  // Fetch owner profile
+  const { data: ownerProfile } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", buddyId)
+    .single();
+  
+  if (ownerProfile) {
+    viewingBuddy = {
+      id: buddyId,
+      name: ownerProfile.name || ownerProfile.username || "Unknown",
+      username: ownerProfile.username,
+      avatar_url: ownerProfile.avatar_url,
+      canEdit: share.can_edit
+    };
+    
+    // Load buddy's rewards data
+    if (ownerProfile.weekly_rewards) state.weeklyRewards = ownerProfile.weekly_rewards;
+    if (ownerProfile.monthly_rewards) state.monthlyRewards = ownerProfile.monthly_rewards;
+    if (ownerProfile.completions) state.completions = ownerProfile.completions;
+    if (ownerProfile.tasks) state.tasks = ownerProfile.tasks;
+    if (ownerProfile.redeemed_goals) state.redeemedGoals = ownerProfile.redeemed_goals;
+    
+    showBuddyBanner();
+  }
+}
+
+function showBuddyBanner() {
+  removeBuddyBanner();
+  
+  const banner = document.createElement("div");
+  banner.id = "buddy-viewing-banner";
+  banner.className = "buddy-viewing-banner";
+  banner.innerHTML = `
+    <div class="buddy-viewing-info">
+      <div class="buddy-viewing-avatar">${viewingBuddy.avatar_url ? `<img src="${viewingBuddy.avatar_url}" alt="">` : '👤'}</div>
+      <div class="buddy-viewing-text">Viewing <strong>${viewingBuddy.name}</strong>'s Rewards ${viewingBuddy.canEdit ? '(Can Edit)' : '(View Only)'}</div>
+    </div>
+    <button class="buddy-viewing-close" onclick="exitBuddyView()">Exit</button>
+  `;
+  
+  const app = document.querySelector(".app");
+  app.insertBefore(banner, app.firstChild.nextSibling);
+}
+
+function removeBuddyBanner() {
+  const existing = document.getElementById("buddy-viewing-banner");
+  if (existing) existing.remove();
+}
+
+function exitBuddyView() {
+  window.location.href = "rewards.html";
 }
 
 function loadLocalState() {
