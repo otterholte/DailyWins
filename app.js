@@ -488,18 +488,19 @@ async function submitAuth() {
 
 async function loadUserProfile(user) {
   try {
-    // Ensure email is stored in profile
-    await supabase.from('profiles').upsert({
-      id: user.id,
-      email: user.email,
-      updated_at: new Date().toISOString()
-    }, { onConflict: 'id' });
-    
     const { data: profile, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', user.id)
       .single();
+    
+    // If profile exists but email is missing, update it
+    if (profile && !profile.email) {
+      await supabase.from('profiles')
+        .update({ email: user.email, updated_at: new Date().toISOString() })
+        .eq('id', user.id);
+      profile.email = user.email;
+    }
     
     if (error) {
       console.error("Failed to load profile:", error);

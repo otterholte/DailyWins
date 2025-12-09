@@ -216,13 +216,10 @@ async function shareWithBuddy() {
 async function loadSharedWith() {
   if (!currentUser) return;
   
+  // Get shares without join
   const { data: shares, error } = await supabase
     .from("buddy_shares")
-    .select(`
-      id,
-      can_edit,
-      buddy:buddy_id (id, name, username, avatar_url)
-    `)
+    .select("id, can_edit, buddy_id")
     .eq("owner_id", currentUser.id);
   
   const container = document.getElementById("shared-with-items");
@@ -232,13 +229,25 @@ async function loadSharedWith() {
     return;
   }
   
-  container.innerHTML = shares.map(share => `
+  // Fetch buddy profiles separately
+  const buddyIds = shares.map(s => s.buddy_id);
+  const { data: buddyProfiles } = await supabase
+    .from("profiles")
+    .select("id, name, username, avatar_url")
+    .in("id", buddyIds);
+  
+  const profileMap = {};
+  (buddyProfiles || []).forEach(p => profileMap[p.id] = p);
+  
+  container.innerHTML = shares.map(share => {
+    const buddy = profileMap[share.buddy_id] || {};
+    return `
     <div class="shared-item" data-share-id="${share.id}">
       <div class="shared-item-info">
-        <div class="shared-item-avatar">${share.buddy?.avatar_url ? `<img src="${share.buddy.avatar_url}" alt="">` : '👤'}</div>
+        <div class="shared-item-avatar">${buddy.avatar_url ? `<img src="${buddy.avatar_url}" alt="">` : '👤'}</div>
         <div class="shared-item-details">
-          <div class="shared-item-name">${share.buddy?.name || share.buddy?.username || 'Unknown'}</div>
-          <div class="shared-item-username">@${share.buddy?.username || 'unknown'}</div>
+          <div class="shared-item-name">${buddy.name || buddy.username || 'Unknown'}</div>
+          <div class="shared-item-username">@${buddy.username || 'unknown'}</div>
         </div>
       </div>
       <div class="shared-item-actions">
@@ -249,7 +258,7 @@ async function loadSharedWith() {
         <button class="remove-share-btn" data-share-id="${share.id}" title="Remove">✕</button>
       </div>
     </div>
-  `).join("");
+  `}).join("");
   
   // Bind edit toggles
   container.querySelectorAll(".edit-toggle").forEach(toggle => {
@@ -276,13 +285,10 @@ async function loadSharedWith() {
 async function loadBuddies() {
   if (!currentUser) return;
   
+  // Get shares without join
   const { data: shares, error } = await supabase
     .from("buddy_shares")
-    .select(`
-      id,
-      can_edit,
-      owner:owner_id (id, name, username, avatar_url)
-    `)
+    .select("id, can_edit, owner_id")
     .eq("buddy_id", currentUser.id);
   
   const container = document.getElementById("buddies-list");
@@ -292,21 +298,33 @@ async function loadBuddies() {
     return;
   }
   
-  container.innerHTML = shares.map(share => `
-    <div class="buddy-card" data-owner-id="${share.owner?.id}">
-      <div class="buddy-avatar">${share.owner?.avatar_url ? `<img src="${share.owner.avatar_url}" alt="">` : '👤'}</div>
+  // Fetch owner profiles separately
+  const ownerIds = shares.map(s => s.owner_id);
+  const { data: ownerProfiles } = await supabase
+    .from("profiles")
+    .select("id, name, username, avatar_url")
+    .in("id", ownerIds);
+  
+  const profileMap = {};
+  (ownerProfiles || []).forEach(p => profileMap[p.id] = p);
+  
+  container.innerHTML = shares.map(share => {
+    const owner = profileMap[share.owner_id] || {};
+    return `
+    <div class="buddy-card" data-owner-id="${owner.id}">
+      <div class="buddy-avatar">${owner.avatar_url ? `<img src="${owner.avatar_url}" alt="">` : '👤'}</div>
       <div class="buddy-info">
-        <div class="buddy-name">${share.owner?.name || share.owner?.username || 'Unknown'}</div>
-        <div class="buddy-username">@${share.owner?.username || 'unknown'}</div>
+        <div class="buddy-name">${owner.name || owner.username || 'Unknown'}</div>
+        <div class="buddy-username">@${owner.username || 'unknown'}</div>
         ${share.can_edit ? '<span class="buddy-edit-badge">Can Edit</span>' : '<span class="buddy-view-badge">View Only</span>'}
       </div>
       <div class="buddy-actions">
-        <a href="index.html?buddy=${share.owner?.id}" class="buddy-link">Daily Wins</a>
-        <a href="star-jar.html?buddy=${share.owner?.id}" class="buddy-link">Star Jar</a>
-        <a href="rewards.html?buddy=${share.owner?.id}" class="buddy-link">Rewards</a>
+        <a href="index.html?buddy=${owner.id}" class="buddy-link">Daily Wins</a>
+        <a href="star-jar.html?buddy=${owner.id}" class="buddy-link">Star Jar</a>
+        <a href="rewards.html?buddy=${owner.id}" class="buddy-link">Rewards</a>
       </div>
     </div>
-  `).join("");
+  `}).join("");
 }
 
 // Confirm modal
@@ -329,18 +347,30 @@ let userProfile = null;
 async function loadUserProfile() {
   if (!currentUser) return;
   
-  // Make sure the email is stored in the profile
-  await supabase.from("profiles").upsert({
-    id: currentUser.id,
-    email: currentUser.email,
-    updated_at: new Date().toISOString()
-  }, { onConflict: 'id' });
-  
+  // First get the profile
   const { data } = await supabase
     .from("profiles")
     .select("*")
     .eq("id", currentUser.id)
     .single();
+  
+  // If profile exists but email is missing, update it
+  if (data && !data.email) {
+    await supabase.from("profiles")
+      .update({ email: currentUser.email, updated_at: new Date().toISOString() })
+      .eq("id", currentUser.id);
+    data.email = currentUser.email;
+  } else if (!data) {
+    // Create profile if it doesn't exist
+    await supabase.from("profiles").insert({
+      id: currentUser.id,
+      email: currentUser.email,
+      username: currentUser.email.split('@')[0],
+      name: currentUser.email.split('@')[0],
+      updated_at: new Date().toISOString()
+    });
+  }
+  
   userProfile = data;
   updateAccountButton();
 }
