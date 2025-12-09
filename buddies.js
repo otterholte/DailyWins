@@ -100,11 +100,11 @@ function showBuddiesContent() {
 
 // Share with buddy
 async function shareWithBuddy() {
-  const usernameInput = document.getElementById("share-username");
-  const username = usernameInput.value.trim().toLowerCase();
+  const emailInput = document.getElementById("share-username");
+  let email = emailInput.value.trim().toLowerCase();
   
-  if (!username) {
-    alert("Please enter a username");
+  if (!email) {
+    alert("Please enter an email address");
     return;
   }
   
@@ -113,15 +113,39 @@ async function shareWithBuddy() {
     return;
   }
   
-  // Find user by username
-  const { data: buddyProfile, error: findError } = await supabase
+  // If no @ symbol, assume it's a username and add @dailywins.app
+  if (!email.includes("@")) {
+    email = `${email}@dailywins.app`;
+  }
+  
+  // Find user by email (stored in username field) or by username part
+  let buddyProfile = null;
+  
+  // First try to find by full email in username field
+  const { data: byEmail } = await supabase
     .from("profiles")
     .select("id, name, username, avatar_url")
-    .eq("username", username)
+    .eq("username", email)
     .single();
   
-  if (findError || !buddyProfile) {
-    alert("User not found. Make sure you entered the correct username.");
+  if (byEmail) {
+    buddyProfile = byEmail;
+  } else {
+    // Try to find by just the username part (before @)
+    const usernamePart = email.split("@")[0];
+    const { data: byUsername } = await supabase
+      .from("profiles")
+      .select("id, name, username, avatar_url")
+      .eq("username", usernamePart)
+      .single();
+    
+    if (byUsername) {
+      buddyProfile = byUsername;
+    }
+  }
+  
+  if (!buddyProfile) {
+    alert("User not found. Make sure they have an account and you entered the correct email.");
     return;
   }
   
@@ -161,9 +185,9 @@ async function shareWithBuddy() {
     return;
   }
   
-  usernameInput.value = "";
+  emailInput.value = "";
   loadSharedWith();
-  alert(`Successfully shared with ${buddyProfile.name || username}!`);
+  alert(`Successfully shared with ${buddyProfile.name || email}!`);
 }
 
 // Load people you've shared with
