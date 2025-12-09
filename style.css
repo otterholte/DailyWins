@@ -2214,7 +2214,7 @@ button.text.danger:hover {
 
 .jar-star.super-star {
   font-size: 42px;
-  filter: hue-rotate(280deg) saturate(2) brightness(0.85) drop-shadow(0 2px 8px rgba(102, 51, 153, 0.7));
+  filter: hue-rotate(290deg) saturate(2.5) brightness(0.65) drop-shadow(0 2px 8px rgba(75, 0, 130, 0.8));
   animation: floatSuperStar 4s ease-in-out infinite;
 }
 
