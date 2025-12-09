@@ -151,7 +151,10 @@ async function loadUserProfile(user) {
       avatar: profile.avatar_url,
     };
     
-    state.starMoments = profile.star_moments || [];
+    // Only load user's content if NOT viewing a buddy
+    if (!viewingBuddy) {
+      state.starMoments = profile.star_moments || [];
+    }
     
     updateAccountButton();
     render();
@@ -265,6 +268,12 @@ function escapeHtml(str) {
 }
 
 async function deleteMoment(id) {
+  // Prevent deletion when viewing buddy with view-only access
+  if (viewingBuddy && !viewingBuddy.canEdit) {
+    alert("You have view-only access. You cannot delete star moments for this user.");
+    return;
+  }
+  
   if (!confirm("Delete this star moment?")) return;
   
   state.starMoments = state.starMoments.filter(m => m.id !== id);

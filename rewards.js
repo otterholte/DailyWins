@@ -305,6 +305,12 @@ function formatReward(reward) {
 }
 
 function openRewardModal(rewardId, category) {
+  // Prevent editing/adding rewards when viewing buddy with view-only access
+  if (viewingBuddy && !viewingBuddy.canEdit) {
+    alert("You have view-only access. You cannot add or edit rewards for this user.");
+    return;
+  }
+  
   editingCategory = category;
   const modal = document.getElementById("reward-modal");
   const title = document.getElementById("reward-modal-title");
@@ -364,6 +370,13 @@ function closeRewardModal() {
 }
 
 function saveReward() {
+  // Prevent saving when viewing buddy with view-only access
+  if (viewingBuddy && !viewingBuddy.canEdit) {
+    alert("You have view-only access. You cannot save rewards for this user.");
+    closeRewardModal();
+    return;
+  }
+  
   const isMoneyType = document.querySelector('.reward-type-btn[data-type="money"]').classList.contains("active");
   const emoji = document.getElementById("reward-emoji").value.trim() || "🎁";
   
@@ -407,6 +420,13 @@ function saveReward() {
 
 function deleteReward() {
   if (!editingReward || !editingCategory) return;
+  
+  // Prevent deleting when viewing buddy with view-only access
+  if (viewingBuddy && !viewingBuddy.canEdit) {
+    alert("You have view-only access. You cannot delete rewards for this user.");
+    closeRewardModal();
+    return;
+  }
   
   if (!confirm("Delete this reward?")) return;
   
@@ -490,6 +510,12 @@ function renderCompletedWins() {
 }
 
 function unredeemGoal(goalId) {
+  // Prevent un-redeeming when viewing buddy with view-only access
+  if (viewingBuddy && !viewingBuddy.canEdit) {
+    alert("You have view-only access. You cannot modify redemptions for this user.");
+    return;
+  }
+  
   const monthKey = getMonthKey();
   state.redeemedGoals = state.redeemedGoals.filter(
     r => !(r.goalId === goalId && r.monthKey === monthKey)
@@ -515,6 +541,12 @@ function getRewardText(rewardId) {
 }
 
 function openRedeemModal(goal) {
+  // Prevent redeeming when viewing buddy with view-only access
+  if (viewingBuddy && !viewingBuddy.canEdit) {
+    alert("You have view-only access. You cannot redeem rewards for this user.");
+    return;
+  }
+  
   redeemingGoal = goal;
   
   document.getElementById("redeem-goal-name").textContent = `${goal.emoji || "🏆"} ${goal.label}`;
@@ -538,6 +570,13 @@ function closeRedeemModal() {
 
 function saveRedemption() {
   if (!redeemingGoal) return;
+  
+  // Prevent saving redemption when viewing buddy with view-only access
+  if (viewingBuddy && !viewingBuddy.canEdit) {
+    alert("You have view-only access. You cannot redeem rewards for this user.");
+    closeRedeemModal();
+    return;
+  }
   
   const rewardId = document.getElementById("redeem-reward-select").value;
   const note = document.getElementById("redeem-note").value.trim();
@@ -688,11 +727,14 @@ async function loadUserProfile(user) {
       avatar: profile.avatar_url,
     };
     
-    if (profile.weekly_rewards) state.weeklyRewards = profile.weekly_rewards;
-    if (profile.monthly_rewards) state.monthlyRewards = profile.monthly_rewards;
-    if (profile.completions) state.completions = profile.completions;
-    if (profile.tasks) state.tasks = profile.tasks;
-    if (profile.redeemed_goals) state.redeemedGoals = profile.redeemed_goals;
+    // Only load user's content if NOT viewing a buddy
+    if (!viewingBuddy) {
+      if (profile.weekly_rewards) state.weeklyRewards = profile.weekly_rewards;
+      if (profile.monthly_rewards) state.monthlyRewards = profile.monthly_rewards;
+      if (profile.completions) state.completions = profile.completions;
+      if (profile.tasks) state.tasks = profile.tasks;
+      if (profile.redeemed_goals) state.redeemedGoals = profile.redeemed_goals;
+    }
     
     updateAccountButton();
     render();
