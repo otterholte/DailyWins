@@ -1492,10 +1492,24 @@ function selfCareMonthCount() {
 function currentStreak() {
   let streak = 0;
   let day = new Date();
-  while (hasWins(day)) {
-    streak++;
-    day = addDays(day, -1);
+  
+  // If today has wins, count from today
+  // If today has NO wins yet, give grace period - count from yesterday
+  if (hasWins(day)) {
+    // Today has wins, count normally
+    while (hasWins(day)) {
+      streak++;
+      day = addDays(day, -1);
+    }
+  } else {
+    // Today has no wins yet - check yesterday to preserve streak
+    day = addDays(day, -1); // Start from yesterday
+    while (hasWins(day)) {
+      streak++;
+      day = addDays(day, -1);
+    }
   }
+  
   return streak;
 }
 
