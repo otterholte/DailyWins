@@ -364,15 +364,33 @@ function renderCompletedWins() {
   }).join("");
   
   // Add click handlers to badges
-  grid.querySelectorAll(".completed-win-badge:not(.redeemed)").forEach(badge => {
+  grid.querySelectorAll(".completed-win-badge").forEach(badge => {
     badge.addEventListener("click", (e) => {
       e.stopPropagation();
       const goalId = badge.dataset.goalId;
       const goalType = badge.dataset.goalType;
       const goal = completedGoals.find(g => g.id === goalId);
-      openRedeemModal(goal);
+      
+      if (badge.classList.contains("redeemed")) {
+        // Unredeem - confirm first
+        if (confirm("Remove this redemption?")) {
+          unredeemGoal(goalId);
+        }
+      } else {
+        // Open redeem modal
+        openRedeemModal(goal);
+      }
     });
   });
+}
+
+function unredeemGoal(goalId) {
+  const monthKey = getMonthKey();
+  state.redeemedGoals = state.redeemedGoals.filter(
+    r => !(r.goalId === goalId && r.monthKey === monthKey)
+  );
+  saveState();
+  render();
 }
 
 function getMonthKey() {

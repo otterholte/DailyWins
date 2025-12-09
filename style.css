@@ -2356,6 +2356,11 @@ button.text.danger:hover {
   border-color: #2db84d;
 }
 
+.completed-win-badge.redeemed:hover {
+  background: #2db84d;
+  transform: scale(1.05);
+}
+
 /* Redeemed card state */
 .completed-win-card.redeemed {
   background: #e5e5e7 !important;
