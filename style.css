@@ -1131,9 +1131,49 @@ button.danger {
   border: 1px solid rgba(0,0,0,0.08);
 }
 /* Grand Progress Bar */
+/* Swipeable Grand Progress Container */
+.grand-progress-swipe-container {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  margin-bottom: 16px;
+}
+
+.grand-progress-swipe-wrapper {
+  transition: transform 0.2s ease;
+}
+
+.grand-progress-actions {
+  position: absolute;
+  top: 0;
+  right: -60px;
+  bottom: 0;
+  width: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e0e0e0;
+  transition: right 0.2s ease;
+  border-radius: 0 16px 16px 0;
+  z-index: 10;
+}
+
+.grand-progress-swipe-container.swiped-left .grand-progress-actions {
+  right: 0;
+}
+
+.grand-progress-actions .edit-btn {
+  background: transparent;
+  border: none;
+  color: #666;
+  font-size: 22px;
+  cursor: pointer;
+  padding: 12px;
+}
+
 .grand-progress {
   background: linear-gradient(135deg, #fff9e6 0%, #fff3cd 100%);
-  border: 2px solid #ffd43b;
+  border: 2px solid var(--grand-color, #ffd43b);
   border-radius: 16px;
   padding: 20px;
   margin-bottom: 0;
@@ -2207,29 +2247,89 @@ button.text.danger:hover {
 }
 
 .jar-star {
-  font-size: 32px;
+  width: 40px;
+  height: 40px;
   animation: floatStar 3s ease-in-out infinite;
   filter: drop-shadow(0 2px 4px rgba(255, 200, 0, 0.4));
 }
 
+.jar-star .star-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.jar-star .star-body {
+  fill: #ffd43b;
+  stroke: #e6b800;
+  stroke-width: 1;
+}
+
+.jar-star .star-eye {
+  fill: #3d2914;
+  animation: blink 4s ease-in-out infinite;
+}
+
+.jar-star .star-sparkle {
+  fill: white;
+}
+
+.jar-star .star-mouth {
+  stroke: #3d2914;
+}
+
+.jar-star .star-blush {
+  fill: rgba(255, 120, 120, 0.4);
+}
+
 .jar-star.super-star {
-  font-size: 42px;
-  filter: hue-rotate(270deg) saturate(2) brightness(0.55) drop-shadow(0 1px 3px rgba(75, 0, 130, 0.4));
+  width: 50px;
+  height: 50px;
   animation: floatSuperStar 4s ease-in-out infinite;
+  filter: drop-shadow(0 2px 6px rgba(128, 0, 128, 0.5));
+}
+
+.jar-star.super-star .star-body {
+  fill: #9b59b6;
+  stroke: #7d3c98;
+}
+
+.jar-star.super-star .star-eye {
+  fill: #2c1a4a;
+}
+
+.jar-star.super-star .star-sparkle {
+  fill: rgba(255, 255, 255, 0.9);
+}
+
+.jar-star.super-star .star-mouth {
+  stroke: #2c1a4a;
+}
+
+.jar-star.super-star .star-blush {
+  fill: rgba(220, 130, 255, 0.4);
 }
 
 .jar-star:nth-child(odd) {
   animation-delay: -1.5s;
 }
 
+.jar-star:nth-child(odd) .star-eye {
+  animation-delay: -2s;
+}
+
 @keyframes floatStar {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  50% { transform: translateY(-5px) rotate(10deg); }
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  50% { transform: translateY(-5px) rotate(3deg); }
 }
 
 @keyframes floatSuperStar {
-  0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
-  50% { transform: translateY(-3px) rotate(5deg) scale(1.02); }
+  0%, 100% { transform: translateY(0) rotate(-2deg) scale(1); }
+  50% { transform: translateY(-3px) rotate(2deg) scale(1.02); }
+}
+
+@keyframes blink {
+  0%, 45%, 55%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(0.1); }
 }
 
 .jar-count {

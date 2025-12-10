@@ -266,12 +266,33 @@ function renderJar() {
   
   countEl.textContent = moments.length;
   
-  // Add stars to jar - super stars are purple and larger
-  jarStars.innerHTML = moments.map(m => 
-    m.isSuperStar 
-      ? `<span class="jar-star super-star">⭐</span>`
-      : `<span class="jar-star">⭐</span>`
-  ).join('');
+  // Add stars with cute faces to jar
+  jarStars.innerHTML = moments.map((m, i) => {
+    const isSuper = m.isSuperStar;
+    // Cute smile expressions only (no surprised look)
+    const smiles = [
+      '<path class="star-mouth smile" d="M20 29 Q25 34, 30 29" fill="none" stroke-width="2" stroke-linecap="round"/>', // happy smile
+      '<path class="star-mouth smile" d="M21 30 Q25 33, 29 30" fill="none" stroke-width="2" stroke-linecap="round"/>', // gentle smile
+      '<path class="star-mouth smile" d="M19 28 Q25 35, 31 28" fill="none" stroke-width="2" stroke-linecap="round"/>', // big smile
+      '<path class="star-mouth smile" d="M22 30 L28 30 M22 30 Q25 33 28 30" fill="none" stroke-width="2" stroke-linecap="round"/>', // cat smile
+    ];
+    const smile = smiles[i % smiles.length];
+    
+    return `
+      <div class="jar-star ${isSuper ? 'super-star' : ''}" style="animation-delay: ${(i * 0.15) % 1.5}s">
+        <svg viewBox="0 0 50 50" class="star-svg">
+          <path class="star-body" d="M25 2 L31 18 L48 20 L35 32 L38 48 L25 40 L12 48 L15 32 L2 20 L19 18 Z"/>
+          <ellipse class="star-eye left-eye" cx="18" cy="22" rx="2.5" ry="3"/>
+          <ellipse class="star-eye right-eye" cx="32" cy="22" rx="2.5" ry="3"/>
+          <circle class="star-sparkle" cx="17" cy="20" r="1"/>
+          <circle class="star-sparkle" cx="31" cy="20" r="1"/>
+          ${smile}
+          <ellipse class="star-blush left-blush" cx="13" cy="28" rx="4" ry="2.5"/>
+          <ellipse class="star-blush right-blush" cx="37" cy="28" rx="4" ry="2.5"/>
+        </svg>
+      </div>
+    `;
+  }).join('');
 }
 
 function renderMoments() {

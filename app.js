@@ -63,6 +63,7 @@ const state = {
   customTasks: null,
   account: null, // logged in account
   starMoments: [], // star jar moments
+  grandGoal: { goal: 100, label: "Total Daily Wins This Month", color: "#ffd43b" },
 };
 
 // Buddy viewing state
@@ -867,6 +868,11 @@ function renderLinkOptions() {
 function closeEditModal() {
   document.getElementById("edit-modal").classList.add("hidden");
   editingTask = null;
+  
+  // Restore link group visibility and title for next use
+  const linkGroup = document.getElementById("link-group");
+  if (linkGroup) linkGroup.style.display = "";
+  document.getElementById("edit-title").textContent = "Edit Task";
 }
 
 function openManageModal(category) {
@@ -1517,6 +1523,19 @@ function saveTask() {
   const goalInput = document.getElementById("edit-goal").value;
   const goal = goalInput ? parseInt(goalInput, 10) : undefined;
   
+  // Handle grand goal separately
+  if (editingTask && editingTask.isGrandGoal) {
+    state.grandGoal = {
+      goal: goal || 100,
+      label: label,
+      color: color
+    };
+    saveState();
+    closeEditModal();
+    render();
+    return;
+  }
+  
   // Get linked tasks (for Daily/Self Care tasks)
   const linkedTo = [];
   document.querySelectorAll("#link-options input[type='checkbox']:checked").forEach(cb => {
@@ -1619,32 +1638,149 @@ function renderQuick() {
 function renderGrandProgress() {
   const row = document.getElementById("progress-row");
   const total = monthCount();
-  const goal = goals.grandTotal;
+  const goal = state.grandGoal?.goal || 100;
+  const label = state.grandGoal?.label || "Total Daily Wins This Month";
+  const color = state.grandGoal?.color || "#ffd43b";
   const percent = Math.min((total / goal) * 100, 100);
   const isComplete = total >= goal;
 
   const grandHtml = `
-    <div class="grand-progress ${isComplete ? 'complete' : ''}">
-      <div class="grand-progress-header">
-        <div class="grand-progress-title">
-          <span class="grand-progress-icon">${isComplete ? '🏆' : '⭐'}</span>
-          <span class="grand-progress-label">Total Daily Wins This Month</span>
+    <div class="grand-progress-swipe-container" data-task-id="grand-goal">
+      <div class="grand-progress-swipe-wrapper">
+        <div class="grand-progress ${isComplete ? 'complete' : ''}" style="--grand-color: ${color}">
+          <div class="grand-progress-header">
+            <div class="grand-progress-title">
+              <span class="grand-progress-icon">${isComplete ? '🏆' : '⭐'}</span>
+              <span class="grand-progress-label">${label}</span>
+            </div>
+            <span class="grand-progress-count">${total} / ${goal}</span>
+          </div>
+          <div class="grand-progress-bar">
+            <div class="grand-progress-fill" style="width: ${percent}%; background: linear-gradient(90deg, ${color}, ${adjustColor(color, 20)})"></div>
+          </div>
         </div>
-        <span class="grand-progress-count">${total} / ${goal}</span>
       </div>
-      <div class="grand-progress-bar">
-        <div class="grand-progress-fill" style="width: ${percent}%"></div>
+      <div class="grand-progress-actions">
+        <button class="edit-btn" title="Edit" onclick="openGrandGoalEdit()">✎</button>
       </div>
     </div>
   `;
 
   // Insert before the regular progress row
-  let grandEl = document.querySelector('.grand-progress');
-  if (!grandEl) {
+  let grandContainer = document.querySelector('.grand-progress-swipe-container');
+  if (!grandContainer) {
     row.insertAdjacentHTML('beforebegin', grandHtml);
+    grandContainer = document.querySelector('.grand-progress-swipe-container');
   } else {
-    grandEl.outerHTML = grandHtml;
+    grandContainer.outerHTML = grandHtml;
+    grandContainer = document.querySelector('.grand-progress-swipe-container');
   }
+  
+  // Initialize swipe handlers
+  if (grandContainer) {
+    initGrandProgressSwipe(grandContainer);
+  }
+}
+
+function adjustColor(hex, amount) {
+  // Lighten a hex color
+  const num = parseInt(hex.replace('#', ''), 16);
+  const r = Math.min(255, (num >> 16) + amount);
+  const g = Math.min(255, ((num >> 8) & 0x00FF) + amount);
+  const b = Math.min(255, (num & 0x0000FF) + amount);
+  return '#' + (0x1000000 + (r << 16) + (g << 8) + b).toString(16).slice(1);
+}
+
+function initGrandProgressSwipe(container) {
+  container.addEventListener("touchstart", handleGrandSwipeStart, { passive: true });
+  container.addEventListener("mousedown", handleGrandSwipeStart);
+  container.addEventListener("touchmove", handleGrandSwipeMove, { passive: false });
+  container.addEventListener("mousemove", handleGrandSwipeMove);
+  container.addEventListener("touchend", handleGrandSwipeEnd);
+  container.addEventListener("mouseup", handleGrandSwipeEnd);
+  container.addEventListener("mouseleave", handleGrandSwipeEnd);
+}
+
+let grandSwipeState = { active: false, container: null, startX: 0, currentX: 0 };
+
+function handleGrandSwipeStart(e) {
+  if (e.target.closest("button")) return;
+  const container = e.currentTarget;
+  const touch = e.touches ? e.touches[0] : e;
+  grandSwipeState = { active: true, container, startX: touch.clientX, currentX: 0 };
+  container.classList.add("swiping");
+}
+
+function handleGrandSwipeMove(e) {
+  if (!grandSwipeState.active) return;
+  const touch = e.touches ? e.touches[0] : e;
+  const deltaX = touch.clientX - grandSwipeState.startX;
+  if (Math.abs(deltaX) > 10) e.preventDefault();
+  grandSwipeState.currentX = deltaX;
+  
+  const container = grandSwipeState.container;
+  const wrapper = container.querySelector(".grand-progress-swipe-wrapper");
+  const actions = container.querySelector(".grand-progress-actions");
+  const wasSwipedLeft = container.classList.contains("swiped-left");
+  
+  if (wasSwipedLeft) {
+    let revealWidth = 60 + (-deltaX);
+    revealWidth = Math.max(0, Math.min(60, revealWidth));
+    actions.style.width = `${revealWidth}px`;
+  } else if (deltaX < 0) {
+    let revealWidth = Math.max(0, Math.min(60, -deltaX));
+    actions.style.width = `${revealWidth}px`;
+  }
+}
+
+function handleGrandSwipeEnd() {
+  if (!grandSwipeState.active) return;
+  const container = grandSwipeState.container;
+  container.classList.remove("swiping");
+  
+  const actions = container.querySelector(".grand-progress-actions");
+  actions.style.width = "";
+  
+  const deltaX = grandSwipeState.currentX;
+  const wasSwipedLeft = container.classList.contains("swiped-left");
+  
+  if (wasSwipedLeft) {
+    if (deltaX > 30) container.classList.remove("swiped-left");
+  } else if (deltaX < -40) {
+    container.classList.add("swiped-left");
+  }
+  
+  grandSwipeState.active = false;
+}
+
+function openGrandGoalEdit() {
+  const modal = document.getElementById("edit-modal");
+  const nameInput = document.getElementById("edit-label");
+  const goalInput = document.getElementById("edit-goal");
+  
+  nameInput.value = state.grandGoal?.label || "Total Daily Wins This Month";
+  goalInput.value = state.grandGoal?.goal || 100;
+  
+  // Set the color in the color picker
+  const savedColor = state.grandGoal?.color || "#ffd43b";
+  document.querySelectorAll("#color-picker .color-option").forEach(opt => {
+    opt.classList.toggle("selected", opt.dataset.color === savedColor);
+  });
+  
+  // Hide the linked goals section for grand goal
+  const linkGroup = document.getElementById("link-group");
+  if (linkGroup) linkGroup.style.display = "none";
+  
+  // Change title
+  document.getElementById("edit-title").textContent = "Edit Monthly Goal";
+  
+  // Set editing flag
+  editingTask = { id: "grand-goal", isGrandGoal: true };
+  modal.classList.remove("hidden");
+  
+  // Close the swipe
+  const container = document.querySelector('.grand-progress-swipe-container');
+  if (container) container.classList.remove("swiped-left");
 }
 
 function updatePeriodLabel() {
@@ -2294,6 +2430,7 @@ function loadState() {
         tasks = saved.customTasks;
       }
       if (saved.starMoments) state.starMoments = saved.starMoments;
+      if (saved.grandGoal) state.grandGoal = saved.grandGoal;
     }
   } catch (e) {
     console.error("Load failed", e);
@@ -2315,6 +2452,7 @@ function saveState() {
       view: state.view,
       customTasks: tasks,
       starMoments: state.starMoments,
+      grandGoal: state.grandGoal,
     })
   );
   
