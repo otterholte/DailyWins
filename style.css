@@ -1152,7 +1152,7 @@ button.danger {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #e0e0e0;
+  background: #8e8e93;
   transition: right 0.2s ease;
   border-radius: 0 16px 16px 0;
   z-index: 10;
@@ -1165,7 +1165,7 @@ button.danger {
 .grand-progress-actions .edit-btn {
   background: transparent;
   border: none;
-  color: #666;
+  color: white;
   font-size: 22px;
   cursor: pointer;
   padding: 12px;
