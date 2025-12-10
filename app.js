@@ -2215,6 +2215,31 @@ function addWin(task) {
   
   saveState();
 
+  // Small confetti for each win
+  celebrateSmall(task.color);
+  
+  // Check if any weekly/monthly goal was just completed
+  if (task.goal !== undefined) {
+    const periodCount = getTaskPeriodCount(task);
+    if (periodCount === task.goal) {
+      // Goal just completed! Big 2-color celebration
+      celebrateGoalComplete(task.color);
+    }
+  }
+  
+  // Also check linked tasks for goal completion
+  if (task.linkedTo && task.linkedTo.length > 0) {
+    task.linkedTo.forEach(linkedTaskId => {
+      const linkedTask = tasks.find(t => t.id === linkedTaskId);
+      if (linkedTask && linkedTask.goal !== undefined) {
+        const periodCount = getTaskPeriodCount(linkedTask);
+        if (periodCount === linkedTask.goal) {
+          celebrateGoalComplete(linkedTask.color);
+        }
+      }
+    });
+  }
+
   const total = countDailyWins(key);
   if (total === 5 || total === 10) {
     celebrate();
@@ -2410,6 +2435,45 @@ function celebrateSuperStar() {
     piece.style.animationDuration = `${2 + Math.random() * 1.5}s`;
     container.appendChild(piece);
     setTimeout(() => piece.remove(), 4000);
+  }
+}
+
+function celebrateSmall(taskColor) {
+  const container = document.getElementById("confetti");
+  // Small cute confetti burst centered on screen
+  const colors = [taskColor, "#ffd43b", "#ff6b6b", "#69db7c", "#4dabf7"];
+  
+  // Create 15 small confetti pieces
+  for (let i = 0; i < 15; i++) {
+    const piece = document.createElement("div");
+    piece.className = "confetti-piece confetti-small";
+    piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+    piece.style.left = `${40 + Math.random() * 20}%`;
+    piece.style.top = `${10 + Math.random() * 10}%`;
+    piece.style.animationDelay = `${Math.random() * 0.2}s`;
+    piece.style.animationDuration = `${0.8 + Math.random() * 0.4}s`;
+    container.appendChild(piece);
+    setTimeout(() => piece.remove(), 1500);
+  }
+}
+
+function celebrateGoalComplete(goalColor) {
+  const container = document.getElementById("confetti");
+  // Two-color celebration: dark grey + goal color
+  const darkGrey = "#5c5c5c";
+  const colors = [darkGrey, darkGrey, goalColor, goalColor, goalColor];
+  
+  // Create 100 confetti pieces for goal completion
+  for (let i = 0; i < 100; i++) {
+    const piece = document.createElement("div");
+    piece.className = "confetti-piece";
+    piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+    piece.style.left = `${5 + Math.random() * 90}%`;
+    piece.style.top = `${-10 + Math.random() * 20}%`;
+    piece.style.animationDelay = `${Math.random() * 0.5}s`;
+    piece.style.animationDuration = `${1.8 + Math.random() * 1}s`;
+    container.appendChild(piece);
+    setTimeout(() => piece.remove(), 3500);
   }
 }
 

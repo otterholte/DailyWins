@@ -1580,6 +1580,13 @@ button.danger-btn:hover {
   animation: confetti-fall 2s ease-out forwards;
 }
 
+.confetti-piece.confetti-small {
+  width: 6px;
+  height: 8px;
+  border-radius: 2px;
+  animation: confetti-fall-small 1s ease-out forwards;
+}
+
 @keyframes confetti-fall {
   0% {
     transform: translateY(-20px) rotate(0deg) scale(1);
@@ -1590,6 +1597,17 @@ button.danger-btn:hover {
   }
   100% {
     transform: translateY(400px) rotate(720deg) scale(0.8);
+    opacity: 0;
+  }
+}
+
+@keyframes confetti-fall-small {
+  0% {
+    transform: translateY(0) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(150px) rotate(360deg) scale(0.5);
     opacity: 0;
   }
 }
