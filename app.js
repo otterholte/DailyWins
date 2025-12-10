@@ -2215,8 +2215,11 @@ function addWin(task) {
   
   saveState();
 
-  // Small confetti for each win
-  celebrateSmall(task.color);
+  // Animated sticker for each win (like sticking to a star chart)
+  showStickerAnimation(task.color);
+  
+  // Track if a goal was completed (to prevent double confetti)
+  let goalCompleted = false;
   
   // Check if any weekly/monthly goal was just completed
   if (task.goal !== undefined) {
@@ -2224,6 +2227,7 @@ function addWin(task) {
     if (periodCount === task.goal) {
       // Goal just completed! Big 2-color celebration
       celebrateGoalComplete(task.color);
+      goalCompleted = true;
     }
   }
   
@@ -2235,13 +2239,15 @@ function addWin(task) {
         const periodCount = getTaskPeriodCount(linkedTask);
         if (periodCount === linkedTask.goal) {
           celebrateGoalComplete(linkedTask.color);
+          goalCompleted = true;
         }
       }
     });
   }
 
+  // Only show 5/10 milestone confetti if no goal was completed
   const total = countDailyWins(key);
-  if (total === 5 || total === 10) {
+  if ((total === 5 || total === 10) && !goalCompleted) {
     celebrate();
   }
 
@@ -2438,23 +2444,30 @@ function celebrateSuperStar() {
   }
 }
 
-function celebrateSmall(taskColor) {
-  const container = document.getElementById("confetti");
-  // Small cute confetti burst centered on screen
-  const colors = [taskColor, "#ffd43b", "#ff6b6b", "#69db7c", "#4dabf7"];
-  
-  // Create 15 small confetti pieces
-  for (let i = 0; i < 15; i++) {
-    const piece = document.createElement("div");
-    piece.className = "confetti-piece confetti-small";
-    piece.style.background = colors[Math.floor(Math.random() * colors.length)];
-    piece.style.left = `${40 + Math.random() * 20}%`;
-    piece.style.top = `${10 + Math.random() * 10}%`;
-    piece.style.animationDelay = `${Math.random() * 0.2}s`;
-    piece.style.animationDuration = `${0.8 + Math.random() * 0.4}s`;
-    container.appendChild(piece);
-    setTimeout(() => piece.remove(), 1500);
+function showStickerAnimation(taskColor) {
+  // Haptic feedback for mobile
+  if (navigator.vibrate) {
+    navigator.vibrate([10, 30, 20]); // Quick tap pattern
   }
+  
+  // Create sticker element
+  const sticker = document.createElement("div");
+  sticker.className = "win-sticker";
+  sticker.innerHTML = `
+    <svg viewBox="0 0 60 60" class="sticker-svg">
+      <circle cx="30" cy="30" r="26" fill="${taskColor}" stroke="white" stroke-width="3"/>
+      <circle cx="30" cy="30" r="22" fill="${taskColor}"/>
+      <path d="M30 18 L33 26 L42 27 L36 33 L37 42 L30 38 L23 42 L24 33 L18 27 L27 26 Z" fill="white" opacity="0.9"/>
+    </svg>
+  `;
+  
+  document.body.appendChild(sticker);
+  
+  // Remove after animation (2 seconds)
+  setTimeout(() => {
+    sticker.classList.add("sticker-fade-out");
+    setTimeout(() => sticker.remove(), 300);
+  }, 2000);
 }
 
 function celebrateGoalComplete(goalColor) {
