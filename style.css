@@ -1619,8 +1619,8 @@ button.danger-btn:hover {
 .sticker-sparkle {
   position: absolute;
   font-size: 16px;
-  color: white;
-  text-shadow: 0 0 4px rgba(255, 255, 255, 0.8);
+  color: #ffd700;
+  text-shadow: 0 0 6px rgba(255, 215, 0, 0.8), 0 0 10px rgba(255, 180, 0, 0.4);
   opacity: 0;
   pointer-events: none;
 }
