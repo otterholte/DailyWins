@@ -2450,14 +2450,34 @@ function showStickerAnimation(taskColor) {
     navigator.vibrate([10, 30, 20]); // Quick tap pattern
   }
   
-  // Create sticker element
+  // Create sticker element with glossy effect and animated checkmark
   const sticker = document.createElement("div");
   sticker.className = "win-sticker";
   sticker.innerHTML = `
     <svg viewBox="0 0 60 60" class="sticker-svg">
-      <circle cx="30" cy="30" r="26" fill="${taskColor}" stroke="white" stroke-width="3"/>
-      <circle cx="30" cy="30" r="22" fill="${taskColor}"/>
-      <path d="M30 18 L33 26 L42 27 L36 33 L37 42 L30 38 L23 42 L24 33 L18 27 L27 26 Z" fill="white" opacity="0.9"/>
+      <defs>
+        <linearGradient id="glossy-${Date.now()}" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:${taskColor};stop-opacity:1" />
+          <stop offset="50%" style="stop-color:${taskColor};stop-opacity:1" />
+          <stop offset="100%" style="stop-color:${adjustColorBrightness(taskColor, -30)};stop-opacity:1" />
+        </linearGradient>
+        <linearGradient id="shine-${Date.now()}" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:white;stop-opacity:0.6" />
+          <stop offset="50%" style="stop-color:white;stop-opacity:0.1" />
+          <stop offset="100%" style="stop-color:white;stop-opacity:0" />
+        </linearGradient>
+      </defs>
+      <!-- Main circle with gradient -->
+      <circle cx="30" cy="30" r="26" fill="url(#glossy-${Date.now()})" stroke="white" stroke-width="2"/>
+      <!-- Glossy shine overlay -->
+      <ellipse cx="22" cy="20" rx="12" ry="8" fill="url(#shine-${Date.now()})" opacity="0.7"/>
+      <!-- Animated checkmark -->
+      <path class="sticker-checkmark" d="M18 30 L26 38 L42 22" 
+            fill="none" 
+            stroke="white" 
+            stroke-width="5" 
+            stroke-linecap="round" 
+            stroke-linejoin="round"/>
     </svg>
   `;
   
@@ -2468,6 +2488,15 @@ function showStickerAnimation(taskColor) {
     sticker.classList.add("sticker-fade-out");
     setTimeout(() => sticker.remove(), 300);
   }, 2000);
+}
+
+function adjustColorBrightness(hex, amount) {
+  // Darken or lighten a hex color
+  const num = parseInt(hex.replace('#', ''), 16);
+  const r = Math.max(0, Math.min(255, (num >> 16) + amount));
+  const g = Math.max(0, Math.min(255, ((num >> 8) & 0x00FF) + amount));
+  const b = Math.max(0, Math.min(255, (num & 0x0000FF) + amount));
+  return '#' + (0x1000000 + (r << 16) + (g << 8) + b).toString(16).slice(1);
 }
 
 function celebrateGoalComplete(goalColor) {
