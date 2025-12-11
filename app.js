@@ -90,7 +90,62 @@ async function init() {
   // Check if viewing a buddy's data
   await checkBuddyViewing();
   
+  // Auto-update to today's date when returning to the app
+  setupDateAutoUpdate();
+  
   render();
+}
+
+// Track last date check time to avoid excessive checks
+let lastDateCheck = Date.now();
+
+// Automatically update to today's date when the page becomes visible
+function setupDateAutoUpdate() {
+  // Handle visibility change (when switching back to the PWA)
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      checkAndUpdateToToday();
+    }
+  });
+  
+  // Handle pageshow (when navigating back to a cached page)
+  window.addEventListener("pageshow", (event) => {
+    if (event.persisted) {
+      checkAndUpdateToToday();
+    }
+  });
+  
+  // Handle focus (when the window regains focus)
+  window.addEventListener("focus", () => {
+    checkAndUpdateToToday();
+  });
+  
+  // Fallback: Check on first touch/click after being away
+  // This catches edge cases where mobile PWAs don't fire visibility events properly
+  document.addEventListener("touchstart", checkDateOnInteraction, { passive: true });
+  document.addEventListener("click", checkDateOnInteraction);
+}
+
+// Check date on user interaction, but only if it's been 1+ minute since last check
+// This prevents excessive checks while still catching edge cases
+function checkDateOnInteraction() {
+  const now = Date.now();
+  const oneMinute = 60 * 1000;
+  
+  if (now - lastDateCheck >= oneMinute) {
+    checkAndUpdateToToday();
+  }
+}
+
+// Check if we're on a different day and update to today if so
+function checkAndUpdateToToday() {
+  lastDateCheck = Date.now();
+  const today = new Date();
+  if (!isSameDay(state.selectedDate, today)) {
+    state.selectedDate = today;
+    state.currentMonth = startOfMonth(today);
+    render();
+  }
 }
 
 // Check URL for buddy parameter and load their data
