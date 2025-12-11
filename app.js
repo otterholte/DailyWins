@@ -96,28 +96,33 @@ async function init() {
   render();
 }
 
-// Track last date check time to avoid excessive checks
-let lastDateCheck = Date.now();
+// Track when the user left the app (for 5-minute threshold)
+let leftAppTime = null;
+const AWAY_THRESHOLD = 5 * 60 * 1000; // 5 minutes in milliseconds
 
 // Automatically update to today's date when the page becomes visible
 function setupDateAutoUpdate() {
-  // Handle visibility change (when switching back to the PWA)
+  // Track when user leaves the app
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") {
-      checkAndUpdateToToday();
+    if (document.visibilityState === "hidden") {
+      // User is leaving - record the time
+      leftAppTime = Date.now();
+    } else if (document.visibilityState === "visible") {
+      // User is returning - check if they were away long enough
+      checkAndUpdateToTodayIfAwayLongEnough();
     }
   });
   
   // Handle pageshow (when navigating back to a cached page)
   window.addEventListener("pageshow", (event) => {
     if (event.persisted) {
-      checkAndUpdateToToday();
+      checkAndUpdateToTodayIfAwayLongEnough();
     }
   });
   
   // Handle focus (when the window regains focus)
   window.addEventListener("focus", () => {
-    checkAndUpdateToToday();
+    checkAndUpdateToTodayIfAwayLongEnough();
   });
   
   // Fallback: Check on first touch/click after being away
@@ -126,26 +131,30 @@ function setupDateAutoUpdate() {
   document.addEventListener("click", checkDateOnInteraction);
 }
 
-// Check date on user interaction, but only if it's been 1+ minute since last check
-// This prevents excessive checks while still catching edge cases
+// Check date on user interaction, but only if away for 5+ minutes
 function checkDateOnInteraction() {
-  const now = Date.now();
-  const oneMinute = 60 * 1000;
-  
-  if (now - lastDateCheck >= oneMinute) {
-    checkAndUpdateToToday();
-  }
+  checkAndUpdateToTodayIfAwayLongEnough();
 }
 
-// Check if we're on a different day and update to today if so
-function checkAndUpdateToToday() {
-  lastDateCheck = Date.now();
+// Only update to today if the user was away for 5+ minutes
+function checkAndUpdateToTodayIfAwayLongEnough() {
+  const now = Date.now();
+  
+  // If we don't know when they left, or they were away less than 5 minutes, skip
+  if (leftAppTime === null || (now - leftAppTime) < AWAY_THRESHOLD) {
+    return;
+  }
+  
+  // They were away long enough - check and update the date
   const today = new Date();
   if (!isSameDay(state.selectedDate, today)) {
     state.selectedDate = today;
     state.currentMonth = startOfMonth(today);
     render();
   }
+  
+  // Reset the timer
+  leftAppTime = null;
 }
 
 // Check URL for buddy parameter and load their data
