@@ -1606,6 +1606,96 @@ function closeDotTooltip() {
   }
 }
 
+// ===== HEART ANIMATION =====
+function spawnHeartBurst(e, color) {
+  const rect = e.currentTarget.getBoundingClientRect();
+  const centerX = rect.left + rect.width / 2;
+  const centerY = rect.top + rect.height / 2;
+  
+  // Haptic feedback
+  if (navigator.vibrate) {
+    navigator.vibrate([15, 30, 15]);
+  }
+  
+  // Spawn hearts
+  const heartCount = 6;
+  for (let i = 0; i < heartCount; i++) {
+    setTimeout(() => {
+      createFloatingHeart(centerX, centerY, color, i);
+    }, i * 40);
+  }
+  
+  // Spawn sparkles
+  const sparkleCount = 8;
+  for (let i = 0; i < sparkleCount; i++) {
+    setTimeout(() => {
+      createSparkle(centerX, centerY, color, i);
+    }, i * 30);
+  }
+}
+
+function createFloatingHeart(x, y, color, index) {
+  const heart = document.createElement("div");
+  heart.className = "floating-heart";
+  
+  // SVG heart that can be colored
+  heart.innerHTML = `
+    <svg viewBox="0 0 24 24" fill="${color}" width="100%" height="100%">
+      <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+    </svg>
+  `;
+  
+  // Random offset and direction
+  const angle = (index / 6) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
+  const distance = 35 + Math.random() * 45;
+  const offsetX = Math.cos(angle) * distance;
+  const offsetY = Math.sin(angle) * distance - 60; // Bias upward
+  
+  heart.style.left = `${x}px`;
+  heart.style.top = `${y}px`;
+  heart.style.setProperty("--float-x", `${offsetX}px`);
+  heart.style.setProperty("--float-y", `${offsetY}px`);
+  heart.style.animationDelay = `${index * 0.04}s`;
+  
+  // Random size variation
+  const size = 18 + Math.random() * 12;
+  heart.style.width = `${size}px`;
+  heart.style.height = `${size}px`;
+  
+  document.body.appendChild(heart);
+  
+  // Remove after animation
+  setTimeout(() => {
+    heart.remove();
+  }, 900);
+}
+
+function createSparkle(x, y, color, index) {
+  const sparkle = document.createElement("div");
+  sparkle.className = "floating-sparkle";
+  
+  // Random angle for sparkle direction
+  const angle = Math.random() * Math.PI * 2;
+  const distance = 40 + Math.random() * 60;
+  const offsetX = Math.cos(angle) * distance;
+  const offsetY = Math.sin(angle) * distance - 30;
+  
+  sparkle.style.left = `${x}px`;
+  sparkle.style.top = `${y}px`;
+  sparkle.style.setProperty("--float-x", `${offsetX}px`);
+  sparkle.style.setProperty("--float-y", `${offsetY}px`);
+  sparkle.style.background = color;
+  sparkle.style.boxShadow = `0 0 6px ${color}, 0 0 10px ${color}`;
+  sparkle.style.animationDelay = `${index * 0.03}s`;
+  
+  document.body.appendChild(sparkle);
+  
+  // Remove after animation
+  setTimeout(() => {
+    sparkle.remove();
+  }, 700);
+}
+
 // ===== DRAG AND DROP FOR MAIN TASK LIST =====
 function startTaskDrag(e, container, category) {
   e.preventDefault();
@@ -2186,6 +2276,14 @@ function renderDayView(grid) {
       container.querySelector(".win-delete-btn").addEventListener("click", (e) => {
         e.stopPropagation();
         removeWin(key, win.id);
+      });
+      
+      // Click on win item to show heart animation
+      const winItem = container.querySelector(".win-item");
+      winItem.addEventListener("click", (e) => {
+        // Don't trigger if swiping
+        if (container.classList.contains("swiped-left")) return;
+        spawnHeartBurst(e, win.color);
       });
       
       // Initialize swipe handlers for this win item
