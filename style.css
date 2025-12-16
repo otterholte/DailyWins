@@ -525,6 +525,31 @@ button.danger {
   transform: scale(1.4);
 }
 
+/* Dot Tooltip */
+.dot-tooltip {
+  position: fixed;
+  z-index: 10000;
+  background: white;
+  color: #1a1a1a;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 2px solid;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  max-width: 200px;
+  text-align: center;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 150ms ease, transform 150ms ease;
+  pointer-events: none;
+}
+
+.dot-tooltip.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 /* Week View */
 .view-week .day {
   aspect-ratio: auto;
@@ -614,6 +639,21 @@ button.danger {
   gap: 8px;
 }
 
+/* Win Swipe Container */
+.win-swipe-container {
+  position: relative;
+  overflow: hidden;
+  border-radius: 10px;
+}
+
+.win-swipe-wrapper {
+  transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.win-swipe-container.swiping .win-swipe-wrapper {
+  transition: none;
+}
+
 .win-item {
   display: flex;
   align-items: center;
@@ -621,12 +661,44 @@ button.danger {
   padding: 12px;
   background: var(--bg);
   border-radius: 10px;
-  cursor: pointer;
   transition: background 150ms ease;
 }
 
-.win-item:hover {
-  background: rgba(0, 0, 0, 0.04);
+.win-actions-right {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  display: flex;
+  overflow: hidden;
+  transition: width 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.win-swipe-container.swiping .win-actions-right {
+  transition: none;
+}
+
+.win-swipe-container.swiped-left .win-actions-right {
+  width: 60px;
+}
+
+.win-delete-btn {
+  width: 60px;
+  min-width: 60px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 0;
+  background: #ff3b30;
+  color: white;
+  cursor: pointer;
+}
+
+.win-delete-btn:hover {
+  background: #ff453a;
 }
 
 .win-dot {

@@ -1423,6 +1423,189 @@ function closeOtherSwipes(exceptContainer) {
   });
 }
 
+// ===== WIN ITEM SWIPE HANDLERS =====
+let winSwipeState = {
+  active: false,
+  container: null,
+  startX: 0,
+  startY: 0,
+  currentX: 0,
+  threshold: 50
+};
+
+function initWinSwipeHandlers(container) {
+  container.addEventListener("touchstart", handleWinSwipeStart, { passive: true });
+  container.addEventListener("touchmove", handleWinSwipeMove, { passive: false });
+  container.addEventListener("touchend", handleWinSwipeEnd);
+  
+  // Also support mouse for desktop
+  container.addEventListener("mousedown", handleWinSwipeStart);
+}
+
+function handleWinSwipeStart(e) {
+  if (e.target.closest("button")) return;
+  
+  const container = e.currentTarget;
+  const touch = e.touches ? e.touches[0] : e;
+  
+  winSwipeState.active = true;
+  winSwipeState.container = container;
+  winSwipeState.startX = touch.clientX;
+  winSwipeState.startY = touch.clientY;
+  winSwipeState.currentX = 0;
+  
+  container.classList.add("swiping");
+  
+  if (!e.touches) {
+    document.addEventListener("mousemove", handleWinSwipeMove);
+    document.addEventListener("mouseup", handleWinSwipeEnd);
+  }
+}
+
+function handleWinSwipeMove(e) {
+  if (!winSwipeState.active) return;
+  
+  const touch = e.touches ? e.touches[0] : e;
+  const deltaX = touch.clientX - winSwipeState.startX;
+  const deltaY = touch.clientY - winSwipeState.startY;
+  
+  // If vertical scroll is dominant, cancel swipe
+  if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 10) {
+    resetWinSwipeState(winSwipeState.container);
+    return;
+  }
+  
+  // Prevent page scroll during horizontal swipe
+  if (Math.abs(deltaX) > 10) {
+    e.preventDefault();
+  }
+  
+  winSwipeState.currentX = deltaX;
+  
+  const wasSwipedLeft = winSwipeState.container.classList.contains("swiped-left");
+  const wrapper = winSwipeState.container.querySelector(".win-swipe-wrapper");
+  const rightActions = winSwipeState.container.querySelector(".win-actions-right");
+  
+  if (wasSwipedLeft) {
+    // Already open, handle closing
+    const closeAmount = Math.max(0, deltaX);
+    const currentReveal = Math.max(0, 60 - closeAmount);
+    rightActions.style.width = `${currentReveal}px`;
+  } else if (deltaX < 0) {
+    // Swiping left to reveal delete
+    const revealWidth = Math.min(60, Math.abs(deltaX));
+    rightActions.style.width = `${revealWidth}px`;
+  }
+}
+
+function handleWinSwipeEnd(e) {
+  if (!winSwipeState.active) return;
+  
+  const container = winSwipeState.container;
+  container.classList.remove("swiping");
+  
+  const rightActions = container.querySelector(".win-actions-right");
+  rightActions.style.width = "";
+  
+  const deltaX = winSwipeState.currentX;
+  const wasSwipedLeft = container.classList.contains("swiped-left");
+  
+  if (wasSwipedLeft) {
+    if (deltaX > 30) {
+      // Swiping right to close
+      container.classList.remove("swiped-left");
+      closeOtherWinSwipes(null);
+    }
+  } else {
+    if (deltaX < -winSwipeState.threshold) {
+      // Swipe left to show delete
+      closeOtherWinSwipes(container);
+      container.classList.add("swiped-left");
+    }
+  }
+  
+  winSwipeState.active = false;
+  winSwipeState.container = null;
+  
+  document.removeEventListener("mousemove", handleWinSwipeMove);
+  document.removeEventListener("mouseup", handleWinSwipeEnd);
+}
+
+function resetWinSwipeState(container) {
+  if (!container) return;
+  container.classList.remove("swiping", "swiped-left");
+  const rightActions = container.querySelector(".win-actions-right");
+  if (rightActions) rightActions.style.width = "";
+}
+
+function closeOtherWinSwipes(exceptContainer) {
+  document.querySelectorAll(".win-swipe-container").forEach(c => {
+    if (c !== exceptContainer) {
+      resetWinSwipeState(c);
+    }
+  });
+}
+
+// ===== DOT TOOLTIP =====
+let activeTooltip = null;
+
+function showDotTooltip(e, label, color) {
+  // Close any existing tooltip
+  closeDotTooltip();
+  
+  const dot = e.target;
+  const rect = dot.getBoundingClientRect();
+  
+  // Create tooltip
+  const tooltip = document.createElement("div");
+  tooltip.className = "dot-tooltip";
+  tooltip.textContent = label;
+  tooltip.style.borderColor = color;
+  
+  document.body.appendChild(tooltip);
+  activeTooltip = tooltip;
+  
+  // Position tooltip above the dot
+  const tooltipRect = tooltip.getBoundingClientRect();
+  let left = rect.left + rect.width / 2 - tooltipRect.width / 2;
+  let top = rect.top - tooltipRect.height - 8;
+  
+  // Keep tooltip within viewport
+  if (left < 8) left = 8;
+  if (left + tooltipRect.width > window.innerWidth - 8) {
+    left = window.innerWidth - tooltipRect.width - 8;
+  }
+  if (top < 8) {
+    // Show below if not enough space above
+    top = rect.bottom + 8;
+  }
+  
+  tooltip.style.left = `${left}px`;
+  tooltip.style.top = `${top}px`;
+  tooltip.classList.add("visible");
+  
+  // Close tooltip when clicking anywhere else
+  setTimeout(() => {
+    document.addEventListener("click", closeDotTooltipOnClick);
+    document.addEventListener("touchstart", closeDotTooltipOnClick);
+  }, 10);
+}
+
+function closeDotTooltipOnClick(e) {
+  if (activeTooltip && !e.target.classList.contains("sticker")) {
+    closeDotTooltip();
+  }
+}
+
+function closeDotTooltip() {
+  if (activeTooltip) {
+    activeTooltip.remove();
+    activeTooltip = null;
+    document.removeEventListener("click", closeDotTooltipOnClick);
+    document.removeEventListener("touchstart", closeDotTooltipOnClick);
+  }
+}
+
 // ===== DRAG AND DROP FOR MAIN TASK LIST =====
 function startTaskDrag(e, container, category) {
   e.preventDefault();
@@ -1979,17 +2162,36 @@ function renderDayView(grid) {
     const list = document.createElement("div");
     list.className = "win-list";
     visibleWins.forEach((win) => {
-      const item = document.createElement("div");
-      item.className = "win-item";
-      item.innerHTML = `
-        <span class="win-dot" style="background: ${win.color}"></span>
-        <span class="win-label">${win.label}</span>
-        <span class="win-category">${win.category}</span>
+      const container = document.createElement("div");
+      container.className = "win-swipe-container";
+      container.innerHTML = `
+        <div class="win-swipe-wrapper">
+          <div class="win-item">
+            <span class="win-dot" style="background: ${win.color}"></span>
+            <span class="win-label">${win.label}</span>
+            <span class="win-category">${win.category}</span>
+          </div>
+        </div>
+        <div class="win-actions-right">
+          <button class="win-delete-btn" title="Delete">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+          </button>
+        </div>
       `;
-      item.addEventListener("click", () => {
+      
+      // Bind delete button
+      container.querySelector(".win-delete-btn").addEventListener("click", (e) => {
+        e.stopPropagation();
         removeWin(key, win.id);
       });
-      list.appendChild(item);
+      
+      // Initialize swipe handlers for this win item
+      initWinSwipeHandlers(container);
+      
+      list.appendChild(container);
     });
     detail.appendChild(list);
   }
@@ -2031,9 +2233,10 @@ function createDayCell(date, showWeekday = false) {
     dot.className = "sticker";
     dot.style.background = win.color;
     dot.title = win.label;
+    // Click to show tooltip with win label
     dot.addEventListener("click", (e) => {
       e.stopPropagation();
-      removeWin(key, win.id);
+      showDotTooltip(e, win.label, win.color);
     });
     stickers.appendChild(dot);
   });
@@ -2722,7 +2925,10 @@ function saveStarMoment() {
 
 // Helpers
 function toKey(date) {
-  return date.toISOString().slice(0, 10);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function fromKey(key) {
