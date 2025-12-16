@@ -2773,6 +2773,11 @@ function countRange(category, range) {
 }
 
 function celebrate() {
+  // Haptic feedback for confetti
+  if (navigator.vibrate) {
+    navigator.vibrate([30, 50, 30, 50, 40]);
+  }
+  
   const container = document.getElementById("confetti");
   const colors = ["#ff6b6b", "#ffd43b", "#69db7c", "#4dabf7", "#da77f2", "#ffa94d", "#ff8787", "#74c0fc", "#63e6be"];
   
@@ -2791,6 +2796,11 @@ function celebrate() {
 }
 
 function celebrateSuperStar() {
+  // Extra strong haptic feedback for super star
+  if (navigator.vibrate) {
+    navigator.vibrate([40, 60, 40, 60, 50, 60, 50]);
+  }
+  
   const container = document.getElementById("confetti");
   // Purple and gold colors for super star celebration
   const colors = ["#9b59b6", "#8e44ad", "#663399", "#ffd700", "#ffec8b", "#daa520", "#e0b0ff", "#da70d6"];
@@ -2870,6 +2880,11 @@ function adjustColorBrightness(hex, amount) {
 }
 
 function celebrateGoalComplete(goalColor) {
+  // Haptic feedback for goal completion
+  if (navigator.vibrate) {
+    navigator.vibrate([35, 50, 35, 50, 45]);
+  }
+  
   const container = document.getElementById("confetti");
   // Two-color celebration: dark grey + goal color
   const darkGrey = "#5c5c5c";
