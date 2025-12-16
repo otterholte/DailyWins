@@ -1612,13 +1612,13 @@ function spawnHeartBurst(e, color) {
   const centerX = rect.left + rect.width / 2;
   const centerY = rect.top + rect.height / 2;
   
-  // Haptic feedback
+  // Haptic feedback - stronger with extra beats
   if (navigator.vibrate) {
-    navigator.vibrate([15, 30, 15]);
+    navigator.vibrate([25, 40, 25, 40, 30]);
   }
   
   // Spawn hearts
-  const heartCount = 6;
+  const heartCount = 4;
   for (let i = 0; i < heartCount; i++) {
     setTimeout(() => {
       createFloatingHeart(centerX, centerY, color, i);
@@ -1646,7 +1646,7 @@ function createFloatingHeart(x, y, color, index) {
   `;
   
   // Random offset and direction
-  const angle = (index / 6) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
+  const angle = (index / 4) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
   const distance = 35 + Math.random() * 45;
   const offsetX = Math.cos(angle) * distance;
   const offsetY = Math.sin(angle) * distance - 60; // Bias upward
