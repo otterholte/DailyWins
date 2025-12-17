@@ -168,7 +168,7 @@ async function checkBuddyViewing() {
   }
   
   // Get current user
-  const { data: { session } } = await supabaseClientClient.auth.getSession();
+  const { data: { session } } = await supabaseClient.auth.getSession();
   if (!session) {
     alert("You must be logged in to view a buddy's data");
     window.location.href = "index.html";
@@ -320,7 +320,7 @@ async function loadNavBuddies() {
   const navList = document.getElementById("nav-buddy-list");
   if (!navList) return;
   
-  const { data: { session } } = await supabaseClientClient.auth.getSession();
+  const { data: { session } } = await supabaseClient.auth.getSession();
   if (!session) {
     navList.innerHTML = '';
     return;
@@ -396,7 +396,7 @@ async function bindAccount() {
   document.getElementById("change-password-btn").addEventListener("click", changePassword);
   
   // Check for existing Supabase session
-  const { data: { session } } = await supabaseClientClient.auth.getSession();
+  const { data: { session } } = await supabaseClient.auth.getSession();
   if (session) {
     await loadUserProfile(session.user);
   }
@@ -542,7 +542,7 @@ async function submitAuth() {
   try {
     if (isRegistering) {
       // Sign up with Supabase
-      const { data, error } = await supabaseClientClient.auth.signUp({
+      const { data, error } = await supabaseClient.auth.signUp({
         email,
         password,
         options: {
@@ -559,7 +559,7 @@ async function submitAuth() {
       
       if (data.user) {
         // Update profile with name
-        await supabaseClientClient.from('profiles').update({ 
+        await supabaseClient.from('profiles').update({ 
           name: name || email.split('@')[0],
           username: email 
         }).eq('id', data.user.id);
@@ -570,7 +570,7 @@ async function submitAuth() {
     } else {
       // Sign in with Supabase
       console.log("Attempting login with email:", email);
-      const { data, error } = await supabaseClientClient.auth.signInWithPassword({
+      const { data, error } = await supabaseClient.auth.signInWithPassword({
         email,
         password
       });
@@ -615,7 +615,7 @@ async function loadUserProfile(user) {
     
     // If profile exists but email is missing, update it
     if (profile && !profile.email) {
-      await supabaseClientClient.from('profiles')
+      await supabaseClient.from('profiles')
         .update({ email: user.email, updated_at: new Date().toISOString() })
         .eq('id', user.id);
       profile.email = user.email;
@@ -699,7 +699,7 @@ async function uploadAvatar(e) {
   
   try {
     // Upload to Supabase Storage
-    const { data: uploadData, error: uploadError } = await supabaseClientClient.storage
+    const { data: uploadData, error: uploadError } = await supabaseClient.storage
       .from('avatars')
       .upload(fileName, file, { upsert: true });
     
@@ -748,7 +748,7 @@ async function changePassword() {
   }
   
   try {
-    const { error } = await supabaseClientClient.auth.updateUser({
+    const { error } = await supabaseClient.auth.updateUser({
       password: newPass
     });
     
@@ -768,7 +768,7 @@ async function changePassword() {
 }
 
 async function logout() {
-  await supabaseClientClient.auth.signOut();
+  await supabaseClient.auth.signOut();
   
   state.account = null;
   

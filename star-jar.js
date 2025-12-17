@@ -35,7 +35,7 @@ async function checkBuddyViewing() {
   }
   
   // Get current user
-  const { data: { session } } = await supabaseClientClient.auth.getSession();
+  const { data: { session } } = await supabaseClient.auth.getSession();
   if (!session) {
     alert("You must be logged in to view a buddy's data");
     window.location.href = "star-jar.html";
@@ -197,7 +197,7 @@ async function loadNavBuddies() {
   const navList = document.getElementById("nav-buddy-list");
   if (!navList) return;
   
-  const { data: { session } } = await supabaseClientClient.auth.getSession();
+  const { data: { session } } = await supabaseClient.auth.getSession();
   if (!session) {
     navList.innerHTML = '';
     return;
@@ -416,7 +416,7 @@ async function bindAccount() {
   document.getElementById("change-password-btn").addEventListener("click", changePassword);
   
   // Check for existing Supabase session
-  const { data: { session } } = await supabaseClientClient.auth.getSession();
+  const { data: { session } } = await supabaseClient.auth.getSession();
   if (session) {
     await loadUserProfile(session.user);
   }
@@ -531,7 +531,7 @@ async function submitAuth() {
   
   try {
     if (isRegistering) {
-      const { data, error } = await supabaseClientClient.auth.signUp({
+      const { data, error } = await supabaseClient.auth.signUp({
         email,
         password,
         options: {
@@ -547,7 +547,7 @@ async function submitAuth() {
       }
       
       if (data.user) {
-        await supabaseClientClient.from('profiles').update({ 
+        await supabaseClient.from('profiles').update({ 
           name: name || email.split('@')[0],
           username: email 
         }).eq('id', data.user.id);
@@ -556,7 +556,7 @@ async function submitAuth() {
         showProfileView();
       }
     } else {
-      const { data, error } = await supabaseClientClient.auth.signInWithPassword({
+      const { data, error } = await supabaseClient.auth.signInWithPassword({
         email,
         password
       });
@@ -640,7 +640,7 @@ async function uploadAvatar(e) {
   const fileName = `${state.account.id}-${Date.now()}.${fileExt}`;
   
   try {
-    const { data: uploadData, error: uploadError } = await supabaseClientClient.storage
+    const { data: uploadData, error: uploadError } = await supabaseClient.storage
       .from('avatars')
       .upload(fileName, file, { upsert: true });
     
@@ -679,7 +679,7 @@ async function changePassword() {
   }
   
   try {
-    const { error } = await supabaseClientClient.auth.updateUser({
+    const { error } = await supabaseClient.auth.updateUser({
       password: newPass
     });
     
@@ -697,7 +697,7 @@ async function changePassword() {
 }
 
 async function logout() {
-  await supabaseClientClient.auth.signOut();
+  await supabaseClient.auth.signOut();
   
   state.account = null;
   state.starMoments = [];

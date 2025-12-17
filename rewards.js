@@ -65,7 +65,7 @@ async function checkBuddyViewing() {
   }
   
   // Get current user
-  const { data: { session } } = await supabaseClientClient.auth.getSession();
+  const { data: { session } } = await supabaseClient.auth.getSession();
   if (!session) {
     alert("You must be logged in to view a buddy's data");
     window.location.href = "rewards.html";
@@ -297,7 +297,7 @@ async function loadNavBuddies() {
   const navList = document.getElementById("nav-buddy-list");
   if (!navList) return;
   
-  const { data: { session } } = await supabaseClientClient.auth.getSession();
+  const { data: { session } } = await supabaseClient.auth.getSession();
   if (!session) {
     navList.innerHTML = '';
     return;
@@ -752,7 +752,7 @@ async function bindAccount() {
   document.getElementById("profile-image").addEventListener("change", uploadAvatar);
   document.getElementById("change-password-btn").addEventListener("click", changePassword);
   
-  const { data: { session } } = await supabaseClientClient.auth.getSession();
+  const { data: { session } } = await supabaseClient.auth.getSession();
   if (session) {
     await loadUserProfile(session.user);
   }
@@ -907,7 +907,7 @@ async function submitAuth() {
   
   try {
     if (isRegistering) {
-      const { data, error } = await supabaseClientClient.auth.signUp({
+      const { data, error } = await supabaseClient.auth.signUp({
         email,
         password,
         options: { data: { name: name || email.split('@')[0] } }
@@ -921,7 +921,7 @@ async function submitAuth() {
       }
       
       if (data.user) {
-        await supabaseClientClient.from('profiles').update({ 
+        await supabaseClient.from('profiles').update({ 
           name: name || email.split('@')[0],
           username: email 
         }).eq('id', data.user.id);
@@ -930,7 +930,7 @@ async function submitAuth() {
         showProfileView();
       }
     } else {
-      const { data, error } = await supabaseClientClient.auth.signInWithPassword({ email, password });
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
       
       if (error) {
         showAuthError(error.message);
@@ -1010,7 +1010,7 @@ async function uploadAvatar(e) {
   const fileName = `${state.account.id}-${Date.now()}.${fileExt}`;
   
   try {
-    const { error: uploadError } = await supabaseClientClient.storage
+    const { error: uploadError } = await supabaseClient.storage
       .from('avatars')
       .upload(fileName, file, { upsert: true });
     
@@ -1047,7 +1047,7 @@ async function changePassword() {
   }
   
   try {
-    const { error } = await supabaseClientClient.auth.updateUser({ password: newPass });
+    const { error } = await supabaseClient.auth.updateUser({ password: newPass });
     
     if (error) {
       alert(error.message || "Failed to change password");
@@ -1063,7 +1063,7 @@ async function changePassword() {
 }
 
 async function logout() {
-  await supabaseClientClient.auth.signOut();
+  await supabaseClient.auth.signOut();
   
   state.account = null;
   state.weeklyRewards = [...defaultWeeklyRewards];
