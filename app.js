@@ -2929,13 +2929,18 @@ function loadState() {
 }
 
 function saveState() {
-  // Never save when viewing a buddy's data - would corrupt user's own data!
   const params = new URLSearchParams(window.location.search);
-  if (params.get('buddy')) {
+  const buddyId = params.get('buddy');
+  
+  // If viewing a buddy, only sync to their profile (don't touch local storage or own profile)
+  if (buddyId) {
+    if (viewingBuddy && viewingBuddy.canEdit) {
+      syncBuddyToServer(buddyId);
+    }
     return;
   }
   
-  // Save locally
+  // Save locally (only for own data)
   localStorage.setItem(
     STORAGE_KEY,
     JSON.stringify({
@@ -2978,6 +2983,34 @@ function syncToServer() {
       console.error("Sync failed:", err);
     }
   }, 1000);
+}
+
+// Sync buddy's data to server when editing their profile
+let buddySyncTimeout = null;
+function syncBuddyToServer(buddyId) {
+  if (buddySyncTimeout) clearTimeout(buddySyncTimeout);
+  buddySyncTimeout = setTimeout(async () => {
+    if (!buddyId || !viewingBuddy || !viewingBuddy.canEdit) return;
+    try {
+      console.log("Syncing buddy data to server...");
+      const { error } = await supabaseClient
+        .from('profiles')
+        .update({
+          completions: state.completions,
+          tasks: tasks,
+          star_moments: state.starMoments,
+        })
+        .eq('id', buddyId);
+      
+      if (error) {
+        console.error("Buddy sync failed:", error);
+      } else {
+        console.log("Buddy data synced successfully");
+      }
+    } catch (err) {
+      console.error("Buddy sync failed:", err);
+    }
+  }, 500); // Slightly faster sync for buddy edits to feel more responsive
 }
 
 // Star Moments Functions

@@ -359,9 +359,14 @@ async function deleteMoment(id) {
 }
 
 async function saveState() {
-  // Never save when viewing a buddy's data - would corrupt user's own data!
   const params = new URLSearchParams(window.location.search);
-  if (params.get('buddy')) {
+  const buddyId = params.get('buddy');
+  
+  // If viewing a buddy, only sync to their profile (don't touch local storage or own profile)
+  if (buddyId) {
+    if (viewingBuddy && viewingBuddy.canEdit) {
+      await syncBuddyToServer(buddyId);
+    }
     return;
   }
   
@@ -394,6 +399,28 @@ async function syncToServer() {
       .eq('id', state.account.id);
   } catch (err) {
     console.error("Sync failed:", err);
+  }
+}
+
+// Sync buddy's star moments to server when editing their profile
+async function syncBuddyToServer(buddyId) {
+  if (!buddyId || !viewingBuddy || !viewingBuddy.canEdit) return;
+  try {
+    console.log("Syncing buddy star moments to server...");
+    const { error } = await supabaseClient
+      .from('profiles')
+      .update({
+        star_moments: state.starMoments,
+      })
+      .eq('id', buddyId);
+    
+    if (error) {
+      console.error("Buddy star moments sync failed:", error);
+    } else {
+      console.log("Buddy star moments synced successfully");
+    }
+  } catch (err) {
+    console.error("Buddy star moments sync failed:", err);
   }
 }
 

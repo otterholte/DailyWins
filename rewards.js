@@ -174,9 +174,14 @@ function loadLocalState() {
 }
 
 function saveState() {
-  // Never save when viewing a buddy's data - would corrupt user's own data!
   const params = new URLSearchParams(window.location.search);
-  if (params.get('buddy')) {
+  const buddyId = params.get('buddy');
+  
+  // If viewing a buddy, only sync to their profile (don't touch local storage or own profile)
+  if (buddyId) {
+    if (viewingBuddy && viewingBuddy.canEdit) {
+      syncBuddyToServer(buddyId);
+    }
     return;
   }
   
@@ -212,6 +217,34 @@ async function syncToServer() {
   } catch (err) {
     console.error("Sync failed:", err);
   }
+}
+
+// Sync buddy's data to server when editing their profile
+let buddySyncTimeout = null;
+async function syncBuddyToServer(buddyId) {
+  if (buddySyncTimeout) clearTimeout(buddySyncTimeout);
+  buddySyncTimeout = setTimeout(async () => {
+    if (!buddyId || !viewingBuddy || !viewingBuddy.canEdit) return;
+    try {
+      console.log("Syncing buddy rewards to server...");
+      const { error } = await supabaseClient
+        .from('profiles')
+        .update({
+          weekly_rewards: state.weeklyRewards,
+          monthly_rewards: state.monthlyRewards,
+          redeemed_goals: state.redeemedGoals,
+        })
+        .eq('id', buddyId);
+      
+      if (error) {
+        console.error("Buddy rewards sync failed:", error);
+      } else {
+        console.log("Buddy rewards synced successfully");
+      }
+    } catch (err) {
+      console.error("Buddy rewards sync failed:", err);
+    }
+  }, 500);
 }
 
 function bindControls() {
