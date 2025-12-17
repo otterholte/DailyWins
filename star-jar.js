@@ -3,7 +3,7 @@ const STORAGE_KEY = "daily-wins-v3";
 // Supabase Configuration (same as app.js)
 const SUPABASE_URL = 'https://viwyvwopdrxfzvkxboyn.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpd3l2d29wZHJ4Znp2a3hib3luIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxNzIzOTEsImV4cCI6MjA4MDc0ODM5MX0.uksKQ_bbcMhqN1BhaTp75xyo6Y4pNJi6RRsmu7osvyg';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const state = {
   currentMonth: new Date(),
@@ -35,7 +35,7 @@ async function checkBuddyViewing() {
   }
   
   // Get current user
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session } } = await supabaseClient.auth.getSession();
   if (!session) {
     alert("You must be logged in to view a buddy's data");
     window.location.href = "star-jar.html";
@@ -197,7 +197,7 @@ async function loadNavBuddies() {
   const navList = document.getElementById("nav-buddy-list");
   if (!navList) return;
   
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session } } = await supabaseClient.auth.getSession();
   if (!session) {
     navList.innerHTML = '';
     return;
@@ -416,13 +416,13 @@ async function bindAccount() {
   document.getElementById("change-password-btn").addEventListener("click", changePassword);
   
   // Check for existing Supabase session
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session } } = await supabaseClient.auth.getSession();
   if (session) {
     await loadUserProfile(session.user);
   }
   
   // Listen for auth changes
-  supabase.auth.onAuthStateChange(async (event, session) => {
+  supabaseClient.auth.onAuthStateChange(async (event, session) => {
     if (event === 'SIGNED_IN' && session) {
       // Check if we're viewing a buddy - if so, skip full profile load
       const params = new URLSearchParams(window.location.search);
@@ -531,7 +531,7 @@ async function submitAuth() {
   
   try {
     if (isRegistering) {
-      const { data, error } = await supabase.auth.signUp({
+      const { data, error } = await supabaseClient.auth.signUp({
         email,
         password,
         options: {
@@ -547,7 +547,7 @@ async function submitAuth() {
       }
       
       if (data.user) {
-        await supabase.from('profiles').update({ 
+        await supabaseClient.from('profiles').update({ 
           name: name || email.split('@')[0],
           username: email 
         }).eq('id', data.user.id);
@@ -556,7 +556,7 @@ async function submitAuth() {
         showProfileView();
       }
     } else {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabaseClient.auth.signInWithPassword({
         email,
         password
       });
@@ -640,7 +640,7 @@ async function uploadAvatar(e) {
   const fileName = `${state.account.id}-${Date.now()}.${fileExt}`;
   
   try {
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    const { data: uploadData, error: uploadError } = await supabaseClient.storage
       .from('avatars')
       .upload(fileName, file, { upsert: true });
     
@@ -649,7 +649,7 @@ async function uploadAvatar(e) {
       return;
     }
     
-    const { data: { publicUrl } } = supabase.storage
+    const { data: { publicUrl } } = supabaseClient.storage
       .from('avatars')
       .getPublicUrl(fileName);
     
@@ -679,7 +679,7 @@ async function changePassword() {
   }
   
   try {
-    const { error } = await supabase.auth.updateUser({
+    const { error } = await supabaseClient.auth.updateUser({
       password: newPass
     });
     
@@ -697,7 +697,7 @@ async function changePassword() {
 }
 
 async function logout() {
-  await supabase.auth.signOut();
+  await supabaseClient.auth.signOut();
   
   state.account = null;
   state.starMoments = [];
