@@ -16,7 +16,7 @@ async function init() {
   bindBuddyActions();
   
   // Check auth state
-  const { data: { session } } = await supabaseClient.auth.getSession();
+  const { data: { session } } = await supabaseClientClient.auth.getSession();
   if (session) {
     currentUser = session.user;
     await loadUserProfile();
@@ -63,7 +63,7 @@ async function loadNavBuddies() {
   }
   
   // Get shares where you're the buddy (people who shared with you)
-  const { data: shares, error } = await supabase
+  const { data: shares, error } = await supabaseClient
     .from("buddy_shares")
     .select("owner_id")
     .eq("buddy_id", currentUser.id);
@@ -75,7 +75,7 @@ async function loadNavBuddies() {
   
   // Fetch owner profiles
   const ownerIds = shares.map(s => s.owner_id);
-  const { data: profiles } = await supabase
+  const { data: profiles } = await supabaseClient
     .from("profiles")
     .select("id, name, username, avatar_url")
     .in("id", ownerIds);
@@ -167,7 +167,7 @@ async function shareWithBuddy() {
   console.log("Searching for buddy with email:", email);
   
   // First try to find by email field
-  const { data: byEmail, error: emailError } = await supabase
+  const { data: byEmail, error: emailError } = await supabaseClient
     .from("profiles")
     .select("id, name, username, email, avatar_url")
     .eq("email", email)
@@ -179,7 +179,7 @@ async function shareWithBuddy() {
     buddyProfile = byEmail;
   } else {
     // Try to find by username field (for backwards compatibility)
-    const { data: byUsername, error: usernameError } = await supabase
+    const { data: byUsername, error: usernameError } = await supabaseClient
       .from("profiles")
       .select("id, name, username, email, avatar_url")
       .eq("username", email)
@@ -192,7 +192,7 @@ async function shareWithBuddy() {
     } else {
       // Try by just the username part
       const usernamePart = email.split("@")[0];
-      const { data: byUsernamePart, error: partError } = await supabase
+      const { data: byUsernamePart, error: partError } = await supabaseClient
         .from("profiles")
         .select("id, name, username, email, avatar_url")
         .eq("username", usernamePart)
@@ -208,7 +208,7 @@ async function shareWithBuddy() {
   
   if (!buddyProfile) {
     // Let's also fetch all profiles to debug
-    const { data: allProfiles } = await supabaseClient.from("profiles").select("id, email, username, name");
+    const { data: allProfiles } = await supabaseClientClient.from("profiles").select("id, email, username, name");
     console.log("All profiles in database:", allProfiles);
     alert("User not found. Check browser console for debug info. Make sure the buddy has logged in at least once to sync their email.");
     return;
@@ -220,7 +220,7 @@ async function shareWithBuddy() {
   }
   
   // Check if already shared
-  const { data: existing } = await supabase
+  const { data: existing } = await supabaseClient
     .from("buddy_shares")
     .select("id")
     .eq("owner_id", currentUser.id)
@@ -236,7 +236,7 @@ async function shareWithBuddy() {
   const allowEdit = document.getElementById("allow-edit-default").checked;
   
   // Create share
-  const { error: shareError } = await supabase
+  const { error: shareError } = await supabaseClient
     .from("buddy_shares")
     .insert({
       owner_id: currentUser.id,
@@ -260,7 +260,7 @@ async function loadSharedWith() {
   if (!currentUser) return;
   
   // Get shares without join
-  const { data: shares, error } = await supabase
+  const { data: shares, error } = await supabaseClient
     .from("buddy_shares")
     .select("id, can_edit, buddy_id")
     .eq("owner_id", currentUser.id);
@@ -274,7 +274,7 @@ async function loadSharedWith() {
   
   // Fetch buddy profiles separately
   const buddyIds = shares.map(s => s.buddy_id);
-  const { data: buddyProfiles } = await supabase
+  const { data: buddyProfiles } = await supabaseClient
     .from("profiles")
     .select("id, name, username, avatar_url")
     .in("id", buddyIds);
@@ -308,7 +308,7 @@ async function loadSharedWith() {
     toggle.addEventListener("change", async (e) => {
       const shareId = e.target.dataset.shareId;
       const canEdit = e.target.checked;
-      await supabaseClient.from("buddy_shares").update({ can_edit: canEdit }).eq("id", shareId);
+      await supabaseClientClient.from("buddy_shares").update({ can_edit: canEdit }).eq("id", shareId);
     });
   });
   
@@ -317,7 +317,7 @@ async function loadSharedWith() {
     btn.addEventListener("click", (e) => {
       const shareId = e.target.dataset.shareId;
       showConfirm("Remove sharing?", "This person will no longer be able to view your data.", async () => {
-        await supabaseClient.from("buddy_shares").delete().eq("id", shareId);
+        await supabaseClientClient.from("buddy_shares").delete().eq("id", shareId);
         loadSharedWith();
       });
     });
@@ -329,7 +329,7 @@ async function loadBuddies() {
   if (!currentUser) return;
   
   // Get shares without join
-  const { data: shares, error } = await supabase
+  const { data: shares, error } = await supabaseClient
     .from("buddy_shares")
     .select("id, can_edit, owner_id")
     .eq("buddy_id", currentUser.id);
@@ -343,7 +343,7 @@ async function loadBuddies() {
   
   // Fetch owner profiles separately
   const ownerIds = shares.map(s => s.owner_id);
-  const { data: ownerProfiles } = await supabase
+  const { data: ownerProfiles } = await supabaseClient
     .from("profiles")
     .select("id, name, username, avatar_url")
     .in("id", ownerIds);
@@ -387,7 +387,7 @@ async function loadUserProfile() {
   if (!currentUser) return;
   
   // First get the profile
-  const { data } = await supabaseClient
+  const { data } = await supabaseClientClient
     .from("profiles")
     .select("*")
     .eq("id", currentUser.id)
@@ -395,13 +395,13 @@ async function loadUserProfile() {
   
   // If profile exists but email is missing, update it
   if (data && !data.email) {
-    await supabaseClient.from("profiles")
+    await supabaseClientClient.from("profiles")
       .update({ email: currentUser.email, updated_at: new Date().toISOString() })
       .eq("id", currentUser.id);
     data.email = currentUser.email;
   } else if (!data) {
     // Create profile if it doesn't exist
-    await supabaseClient.from("profiles").insert({
+    await supabaseClientClient.from("profiles").insert({
       id: currentUser.id,
       email: currentUser.email,
       username: currentUser.email.split('@')[0],
@@ -489,7 +489,7 @@ async function submitAuth() {
   
   try {
     if (isRegistering) {
-      const { data, error } = await supabaseClient.auth.signUp({
+      const { data, error } = await supabaseClientClient.auth.signUp({
         email,
         password,
         options: { data: { name: name || email.split('@')[0] } }
@@ -497,7 +497,7 @@ async function submitAuth() {
       if (error) throw error;
       
       if (data.user) {
-        await supabaseClient.from("profiles").upsert({
+        await supabaseClientClient.from("profiles").upsert({
           id: data.user.id,
           email: email,
           username: email.split('@')[0],
@@ -509,7 +509,7 @@ async function submitAuth() {
       }
     } else {
       console.log("Attempting login with email:", email);
-      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      const { data, error } = await supabaseClientClient.auth.signInWithPassword({ email, password });
       if (error) {
         console.error("Login error:", error);
         showAuthError(error.message + ` (tried: ${email})`);
@@ -550,7 +550,7 @@ async function saveProfile() {
   if (!currentUser) return;
   const name = document.getElementById("profile-name").value.trim();
   
-  const { error } = await supabase
+  const { error } = await supabaseClient
     .from("profiles")
     .update({ name, updated_at: new Date().toISOString() })
     .eq("id", currentUser.id);
@@ -572,7 +572,7 @@ async function uploadAvatar(e) {
   const fileExt = file.name.split(".").pop();
   const fileName = `${currentUser.id}-${Date.now()}.${fileExt}`;
   
-  const { error: uploadError } = await supabaseClient.storage
+  const { error: uploadError } = await supabaseClientClient.storage
     .from("avatars")
     .upload(fileName, file, { upsert: true });
   
@@ -583,7 +583,7 @@ async function uploadAvatar(e) {
   
   const { data: { publicUrl } } = supabaseClient.storage.from("avatars").getPublicUrl(fileName);
   
-  await supabase
+  await supabaseClient
     .from("profiles")
     .update({ avatar_url: publicUrl })
     .eq("id", currentUser.id);
@@ -600,7 +600,7 @@ async function changePassword() {
     return;
   }
   
-  const { error } = await supabaseClient.auth.updateUser({ password: newPassword });
+  const { error } = await supabaseClientClient.auth.updateUser({ password: newPassword });
   if (error) {
     alert("Failed to change password: " + error.message);
   } else {
@@ -609,7 +609,7 @@ async function changePassword() {
 }
 
 async function logout() {
-  await supabaseClient.auth.signOut();
+  await supabaseClientClient.auth.signOut();
   currentUser = null;
   userProfile = null;
   closeAccountModal();

@@ -168,7 +168,7 @@ async function checkBuddyViewing() {
   }
   
   // Get current user
-  const { data: { session } } = await supabaseClient.auth.getSession();
+  const { data: { session } } = await supabaseClientClient.auth.getSession();
   if (!session) {
     alert("You must be logged in to view a buddy's data");
     window.location.href = "index.html";
@@ -176,7 +176,7 @@ async function checkBuddyViewing() {
   }
   
   // Check if we have permission to view this buddy
-  const { data: share, error } = await supabase
+  const { data: share, error } = await supabaseClient
     .from("buddy_shares")
     .select("can_edit, owner_id")
     .eq("owner_id", buddyId)
@@ -191,7 +191,7 @@ async function checkBuddyViewing() {
   }
   
   // Fetch owner profile separately
-  const { data: ownerProfile } = await supabase
+  const { data: ownerProfile } = await supabaseClient
     .from("profiles")
     .select("id, name, username, avatar_url")
     .eq("id", buddyId)
@@ -215,7 +215,7 @@ async function checkBuddyViewing() {
 
 async function loadBuddyData(buddyId) {
   // Load buddy's profile which contains their data
-  const { data: profile, error } = await supabase
+  const { data: profile, error } = await supabaseClient
     .from("profiles")
     .select("*")
     .eq("id", buddyId)
@@ -320,14 +320,14 @@ async function loadNavBuddies() {
   const navList = document.getElementById("nav-buddy-list");
   if (!navList) return;
   
-  const { data: { session } } = await supabaseClient.auth.getSession();
+  const { data: { session } } = await supabaseClientClient.auth.getSession();
   if (!session) {
     navList.innerHTML = '';
     return;
   }
   
   // Get shares where you're the buddy (people who shared with you)
-  const { data: shares, error } = await supabase
+  const { data: shares, error } = await supabaseClient
     .from("buddy_shares")
     .select("owner_id")
     .eq("buddy_id", session.user.id);
@@ -339,7 +339,7 @@ async function loadNavBuddies() {
   
   // Fetch owner profiles
   const ownerIds = shares.map(s => s.owner_id);
-  const { data: profiles } = await supabase
+  const { data: profiles } = await supabaseClient
     .from("profiles")
     .select("id, name, username, avatar_url")
     .in("id", ownerIds);
@@ -396,7 +396,7 @@ async function bindAccount() {
   document.getElementById("change-password-btn").addEventListener("click", changePassword);
   
   // Check for existing Supabase session
-  const { data: { session } } = await supabaseClient.auth.getSession();
+  const { data: { session } } = await supabaseClientClient.auth.getSession();
   if (session) {
     await loadUserProfile(session.user);
   }
@@ -542,7 +542,7 @@ async function submitAuth() {
   try {
     if (isRegistering) {
       // Sign up with Supabase
-      const { data, error } = await supabaseClient.auth.signUp({
+      const { data, error } = await supabaseClientClient.auth.signUp({
         email,
         password,
         options: {
@@ -559,7 +559,7 @@ async function submitAuth() {
       
       if (data.user) {
         // Update profile with name
-        await supabaseClient.from('profiles').update({ 
+        await supabaseClientClient.from('profiles').update({ 
           name: name || email.split('@')[0],
           username: email 
         }).eq('id', data.user.id);
@@ -570,7 +570,7 @@ async function submitAuth() {
     } else {
       // Sign in with Supabase
       console.log("Attempting login with email:", email);
-      const { data, error } = await supabaseClient.auth.signInWithPassword({
+      const { data, error } = await supabaseClientClient.auth.signInWithPassword({
         email,
         password
       });
@@ -607,7 +607,7 @@ async function submitAuth() {
 
 async function loadUserProfile(user) {
   try {
-    const { data: profile, error } = await supabase
+    const { data: profile, error } = await supabaseClient
       .from('profiles')
       .select('*')
       .eq('id', user.id)
@@ -615,7 +615,7 @@ async function loadUserProfile(user) {
     
     // If profile exists but email is missing, update it
     if (profile && !profile.email) {
-      await supabaseClient.from('profiles')
+      await supabaseClientClient.from('profiles')
         .update({ email: user.email, updated_at: new Date().toISOString() })
         .eq('id', user.id);
       profile.email = user.email;
@@ -669,7 +669,7 @@ async function saveProfile() {
   }
   
   try {
-    const { error } = await supabase
+    const { error } = await supabaseClient
       .from('profiles')
       .update({ name })
       .eq('id', state.account.id);
@@ -699,7 +699,7 @@ async function uploadAvatar(e) {
   
   try {
     // Upload to Supabase Storage
-    const { data: uploadData, error: uploadError } = await supabaseClient.storage
+    const { data: uploadData, error: uploadError } = await supabaseClientClient.storage
       .from('avatars')
       .upload(fileName, file, { upsert: true });
     
@@ -716,7 +716,7 @@ async function uploadAvatar(e) {
       .getPublicUrl(fileName);
     
     // Update profile
-    await supabase
+    await supabaseClient
       .from('profiles')
       .update({ avatar_url: publicUrl })
       .eq('id', state.account.id);
@@ -748,7 +748,7 @@ async function changePassword() {
   }
   
   try {
-    const { error } = await supabaseClient.auth.updateUser({
+    const { error } = await supabaseClientClient.auth.updateUser({
       password: newPass
     });
     
@@ -768,7 +768,7 @@ async function changePassword() {
 }
 
 async function logout() {
-  await supabaseClient.auth.signOut();
+  await supabaseClientClient.auth.signOut();
   
   state.account = null;
   
@@ -2966,7 +2966,7 @@ function syncToServer() {
   syncTimeout = setTimeout(async () => {
     if (!state.account) return;
     try {
-      await supabase
+      await supabaseClient
         .from('profiles')
         .update({
           completions: state.completions,

@@ -65,7 +65,7 @@ async function checkBuddyViewing() {
   }
   
   // Get current user
-  const { data: { session } } = await supabaseClient.auth.getSession();
+  const { data: { session } } = await supabaseClientClient.auth.getSession();
   if (!session) {
     alert("You must be logged in to view a buddy's data");
     window.location.href = "rewards.html";
@@ -73,7 +73,7 @@ async function checkBuddyViewing() {
   }
   
   // Check if we have permission to view this buddy
-  const { data: share, error } = await supabase
+  const { data: share, error } = await supabaseClient
     .from("buddy_shares")
     .select("can_edit, owner_id")
     .eq("owner_id", buddyId)
@@ -87,7 +87,7 @@ async function checkBuddyViewing() {
   }
   
   // Fetch owner profile
-  const { data: ownerProfile } = await supabase
+  const { data: ownerProfile } = await supabaseClient
     .from("profiles")
     .select("*")
     .eq("id", buddyId)
@@ -201,7 +201,7 @@ async function syncToServer() {
   
   if (!state.account) return;
   try {
-    await supabase
+    await supabaseClient
       .from('profiles')
       .update({
         weekly_rewards: state.weeklyRewards,
@@ -297,14 +297,14 @@ async function loadNavBuddies() {
   const navList = document.getElementById("nav-buddy-list");
   if (!navList) return;
   
-  const { data: { session } } = await supabaseClient.auth.getSession();
+  const { data: { session } } = await supabaseClientClient.auth.getSession();
   if (!session) {
     navList.innerHTML = '';
     return;
   }
   
   // Get shares where you're the buddy (people who shared with you)
-  const { data: shares, error } = await supabase
+  const { data: shares, error } = await supabaseClient
     .from("buddy_shares")
     .select("owner_id")
     .eq("buddy_id", session.user.id);
@@ -316,7 +316,7 @@ async function loadNavBuddies() {
   
   // Fetch owner profiles
   const ownerIds = shares.map(s => s.owner_id);
-  const { data: profiles } = await supabase
+  const { data: profiles } = await supabaseClient
     .from("profiles")
     .select("id, name, username, avatar_url")
     .in("id", ownerIds);
@@ -752,7 +752,7 @@ async function bindAccount() {
   document.getElementById("profile-image").addEventListener("change", uploadAvatar);
   document.getElementById("change-password-btn").addEventListener("click", changePassword);
   
-  const { data: { session } } = await supabaseClient.auth.getSession();
+  const { data: { session } } = await supabaseClientClient.auth.getSession();
   if (session) {
     await loadUserProfile(session.user);
   }
@@ -781,7 +781,7 @@ async function bindAccount() {
 
 async function loadUserProfile(user) {
   try {
-    const { data: profile, error } = await supabase
+    const { data: profile, error } = await supabaseClient
       .from('profiles')
       .select('*')
       .eq('id', user.id)
@@ -907,7 +907,7 @@ async function submitAuth() {
   
   try {
     if (isRegistering) {
-      const { data, error } = await supabaseClient.auth.signUp({
+      const { data, error } = await supabaseClientClient.auth.signUp({
         email,
         password,
         options: { data: { name: name || email.split('@')[0] } }
@@ -921,7 +921,7 @@ async function submitAuth() {
       }
       
       if (data.user) {
-        await supabaseClient.from('profiles').update({ 
+        await supabaseClientClient.from('profiles').update({ 
           name: name || email.split('@')[0],
           username: email 
         }).eq('id', data.user.id);
@@ -930,7 +930,7 @@ async function submitAuth() {
         showProfileView();
       }
     } else {
-      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      const { data, error } = await supabaseClientClient.auth.signInWithPassword({ email, password });
       
       if (error) {
         showAuthError(error.message);
@@ -984,7 +984,7 @@ async function saveProfile() {
   if (!name) return;
   
   try {
-    const { error } = await supabase
+    const { error } = await supabaseClient
       .from('profiles')
       .update({ name })
       .eq('id', state.account.id);
@@ -1010,7 +1010,7 @@ async function uploadAvatar(e) {
   const fileName = `${state.account.id}-${Date.now()}.${fileExt}`;
   
   try {
-    const { error: uploadError } = await supabaseClient.storage
+    const { error: uploadError } = await supabaseClientClient.storage
       .from('avatars')
       .upload(fileName, file, { upsert: true });
     
@@ -1023,7 +1023,7 @@ async function uploadAvatar(e) {
       .from('avatars')
       .getPublicUrl(fileName);
     
-    await supabase
+    await supabaseClient
       .from('profiles')
       .update({ avatar_url: publicUrl })
       .eq('id', state.account.id);
@@ -1047,7 +1047,7 @@ async function changePassword() {
   }
   
   try {
-    const { error } = await supabaseClient.auth.updateUser({ password: newPass });
+    const { error } = await supabaseClientClient.auth.updateUser({ password: newPass });
     
     if (error) {
       alert(error.message || "Failed to change password");
@@ -1063,7 +1063,7 @@ async function changePassword() {
 }
 
 async function logout() {
-  await supabaseClient.auth.signOut();
+  await supabaseClientClient.auth.signOut();
   
   state.account = null;
   state.weeklyRewards = [...defaultWeeklyRewards];
