@@ -387,7 +387,7 @@ async function loadUserProfile() {
   if (!currentUser) return;
   
   // First get the profile
-  const { data } = await supabase
+  const { data } = await supabaseClient
     .from("profiles")
     .select("*")
     .eq("id", currentUser.id)
